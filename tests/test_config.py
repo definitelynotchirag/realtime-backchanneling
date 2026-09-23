@@ -184,3 +184,20 @@ def test_llm_and_speech_can_use_different_providers() -> None:
 
     assert create_llm(settings).model == "openai/gpt-oss-120b"
     assert create_tts(settings).model == "gemini-3.8-flash-tts"
+
+
+def test_openrouter_key_is_kept_when_only_speech_uses_openrouter() -> None:
+    settings = Settings.from_env(
+        {
+            "LIVEKIT_URL": "wss://example.livekit.cloud",
+            "LIVEKIT_API_KEY": "lk_api_key",
+            "LIVEKIT_API_SECRET": "lk_api_secret",
+            "GROQ_API_KEY": "groq_api_key",
+            "OPENROUTER_API_KEY": "openrouter_api_key",
+            "LLM_PROVIDER": "groq",
+            "TTS_PROVIDER": "openrouter_tts",
+        }
+    )
+
+    assert settings.openrouter_api_key is not None
+    assert settings.openrouter_api_key.get_secret_value() == "openrouter_api_key"

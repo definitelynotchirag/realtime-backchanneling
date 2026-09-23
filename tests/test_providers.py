@@ -3,7 +3,7 @@ import pickle
 from livekit.agents import inference
 from livekit.plugins import elevenlabs, google, groq
 
-from blue_machines_baseline import gemini_tts, groq_interim_stt
+from blue_machines_baseline import gemini_tts, groq_interim_stt, openrouter_tts
 from blue_machines_baseline.agent import create_llm, create_stt, create_tts, entrypoint
 from blue_machines_baseline.config import Settings
 
@@ -102,6 +102,16 @@ def test_groq_interim_stt_reports_interim_capability() -> None:
     # Interim transcripts are the whole point: Jev mode depends on them.
     assert stt.capabilities.streaming is True
     assert stt.capabilities.interim_results is True
+
+
+def test_openrouter_tts_uses_the_free_deepgram_voice() -> None:
+    settings = settings_for_provider_tests(TTS_PROVIDER="openrouter_tts")
+
+    tts = create_tts(settings)
+
+    assert isinstance(tts, openrouter_tts.TTS)
+    assert tts.model == "deepgram/flux-tts:free"
+    assert tts.provider == "openrouter"
 
 
 def test_groq_tts_uses_the_bundled_plugin() -> None:

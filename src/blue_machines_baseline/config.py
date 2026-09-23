@@ -16,7 +16,7 @@ class ConfigurationError(ValueError):
     """Raised when the agent cannot start with the supplied environment."""
 
 
-TTSProvider = Literal["livekit_inference", "elevenlabs", "gemini_tts", "groq_tts"]
+TTSProvider = Literal["livekit_inference", "elevenlabs", "gemini_tts", "groq_tts", "openrouter_tts"]
 LLMProvider = Literal["gemini", "openrouter", "groq"]
 STTProvider = Literal["livekit_inference", "groq", "groq_interim"]
 EotDetector = Literal["livekit_inference", "final_transcript"]
@@ -86,6 +86,8 @@ class Settings(BaseModel):
     gemini_tts_voice: str = "Kore"
     groq_tts_model: str = "canopylabs/orpheus-v1-english"
     groq_tts_voice: str = "autumn"
+    openrouter_tts_model: str = "deepgram/flux-tts:free"
+    openrouter_tts_voice: str = "flux-alexis-en"
     elevenlabs_api_key: SecretStr | None = None
     elevenlabs_tts_model: str = "eleven_turbo_v2_5"
     elevenlabs_voice_id: str = "ODq5zmih8GrVes37Dizd"
@@ -130,6 +132,8 @@ class Settings(BaseModel):
             required["GEMINI_API_KEY (when TTS_PROVIDER=gemini_tts)"] = ""
         if tts_provider == "groq_tts" and not source.get("GROQ_API_KEY", "").strip():
             required["GROQ_API_KEY (when TTS_PROVIDER=groq_tts)"] = ""
+        if tts_provider == "openrouter_tts" and not source.get("OPENROUTER_API_KEY", "").strip():
+            required["OPENROUTER_API_KEY (when TTS_PROVIDER=openrouter_tts)"] = ""
         missing = [name for name, value in required.items() if not value]
         if missing:
             names = ", ".join(missing)
@@ -140,9 +144,11 @@ class Settings(BaseModel):
             "elevenlabs",
             "gemini_tts",
             "groq_tts",
+            "openrouter_tts",
         }:
             raise ConfigurationError(
-                "TTS_PROVIDER must be one of: livekit_inference, elevenlabs, gemini_tts, groq_tts"
+                "TTS_PROVIDER must be one of: livekit_inference, elevenlabs, gemini_tts, "
+                "groq_tts, openrouter_tts"
             )
 
         livekit_url = required["LIVEKIT_URL"]
@@ -246,9 +252,11 @@ class Settings(BaseModel):
             ),
             gemini_model=source.get("GEMINI_MODEL", "gemini-2.5-flash").strip(),
             groq_llm_model=source.get("GROQ_LLM_MODEL", "openai/gpt-oss-120b").strip(),
+            # Same reasoning as gemini_api_key: required only when OpenRouter is
+            # the LLM, but its speech endpoint uses the key too.
             openrouter_api_key=(
-                SecretStr(required["OPENROUTER_API_KEY"])
-                if required.get("OPENROUTER_API_KEY")
+                SecretStr(source["OPENROUTER_API_KEY"].strip())
+                if source.get("OPENROUTER_API_KEY", "").strip()
                 else None
             ),
             openrouter_base_url=openrouter_base_url,
@@ -261,6 +269,10 @@ class Settings(BaseModel):
             gemini_tts_voice=source.get("GEMINI_TTS_VOICE", "Kore").strip(),
             groq_tts_model=source.get("GROQ_TTS_MODEL", "canopylabs/orpheus-v1-english").strip(),
             groq_tts_voice=source.get("GROQ_TTS_VOICE", "autumn").strip(),
+            openrouter_tts_model=source.get(
+                "OPENROUTER_TTS_MODEL", "deepgram/flux-tts:free"
+            ).strip(),
+            openrouter_tts_voice=source.get("OPENROUTER_TTS_VOICE", "flux-alexis-en").strip(),
             elevenlabs_api_key=(
                 SecretStr(source["ELEVENLABS_API_KEY"].strip())
                 if source.get("ELEVENLABS_API_KEY", "").strip()
