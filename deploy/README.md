@@ -1,0 +1,89 @@
+# Deploying the demo stack (single EC2 host)
+
+Everything runs on one Amazon Linux 2023 instance as `ec2-user`, from
+`/home/ec2-user/realtime-voice-chat` (a clone of this repository).
+
+## Components
+
+| Unit | What it runs | Listens on |
+|---|---|---|
+| `blue-machines-worker` | `uv run blue-machines-agent start` (LiveKit worker) | outbound only |
+| `blue-machines-api` | `uv run uvicorn blue_machines_baseline.api:app` | `127.0.0.1:8000` |
+| `blue-machines-dashboard` | `npm start` (Next.js production build) | `127.0.0.1:3000` |
+| `caddy` | TLS + reverse proxy to the dashboard | public `:80`, `:443` |
+
+The browser only ever talks to Caddy; the API stays on localhost and is
+reached by the dashboard's server-side route handlers via `BASELINE_API_URL`.
+
+## Public entry point
+
+- **https://54-176-92-17.sslip.io** — `sslip.io` resolves to this instance's
+  public IP, so it is eligible for a real Let's Encrypt certificate.
+- `http://ec2-54-176-92-17.us-west-1.compute.amazonaws.com` — permanent
+  redirect to the address above. The AWS default hostname itself can never
+  get a public certificate: Let's Encrypt refuses `*.compute.amazonaws.com`
+  by policy, so it cannot be used for HTTPS directly.
+
+HTTPS matters beyond polish: browsers only expose the microphone
+(`getUserMedia`) in a secure context, which the live conversation demo needs.
+
+Prerequisite: the instance security group must allow inbound **80** and
+**443** from the internet. If certificate issuance is still pending after
+opening the ports, run `sudo systemctl reload caddy`.
+
+## Install / update
+
+```bash
+# one-time, as ec2-user
+sudo dnf install -y git nodejs20
+curl -LsSf https://astral.sh/uv/install.sh | sh
+curl -sL "https://caddyserver.com/api/download?os=linux&arch=amd64" -o /tmp/caddy
+sudo install -m 0755 /tmp/caddy /usr/local/bin/caddy
+
+git clone https://github.com/definitelynotchirag/realtime-backchanneling.git \
+  ~/realtime-voice-chat
+cp /path/to/.env ~/realtime-voice-chat/.env   # secrets, never committed
+chmod 600 ~/realtime-voice-chat/.env
+
+cd ~/realtime-voice-chat
+uv sync --extra dev
+(cd dashboard && npm ci && npm run build)
+
+sudo useradd -r -s /sbin/nologin caddy 2>/dev/null || true
+sudo mkdir -p /etc/caddy /var/lib/caddy && sudo chown caddy:caddy /var/lib/caddy
+sudo install -m 644 deploy/Caddyfile /etc/caddy/Caddyfile
+sudo install -m 644 deploy/blue-machines-*.service deploy/caddy.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now caddy blue-machines-api blue-machines-dashboard blue-machines-worker
+```
+
+Update after new commits:
+
+```bash
+cd ~/realtime-voice-chat
+git pull
+uv sync --extra dev
+(cd dashboard && npm ci && npm run build)
+sudo systemctl restart blue-machines-api blue-machines-dashboard blue-machines-worker
+```
+
+## Operations
+
+```bash
+systemctl status blue-machines-worker blue-machines-api blue-machines-dashboard caddy
+sudo journalctl -u blue-machines-worker -f        # worker logs
+sudo journalctl -u blue-machines-dashboard -f     # dashboard logs
+curl -s http://127.0.0.1:8000/health              # API health
+curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:3000/   # dashboard
+```
+
+One worker only: a second registered worker makes room dispatch and
+benchmark labels ambiguous.
+
+## Notes
+
+- Runtime data lives in `outputs/` on the host (`baseline-events.jsonl` is
+  git-ignored by design; `benchmark-events.jsonl` is committed).
+- If `sslip.io` certificate issuance ever fails, Caddy logs the reason
+  (`journalctl -u caddy`); the fallback is `tls internal` in the Caddyfile
+  (self-signed, browser warning) — still a secure context for the mic.

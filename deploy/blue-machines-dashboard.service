@@ -1,0 +1,19 @@
+[Unit]
+Description=Blue Machines Next.js dashboard
+Wants=network-online.target
+After=network-online.target blue-machines-api.service
+
+[Service]
+Type=simple
+User=ec2-user
+Group=ec2-user
+WorkingDirectory=/home/ec2-user/realtime-voice-chat/dashboard
+Environment=PATH=/usr/local/bin:/usr/bin:/bin
+Environment=BASELINE_API_URL=http://127.0.0.1:8000
+Environment=PORT=3000
+ExecStart=/usr/bin/npm start
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

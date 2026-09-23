@@ -1,0 +1,12 @@
+# The AWS default hostname cannot get a public certificate (Let's Encrypt
+# refuses *.compute.amazonaws.com by policy), so HTTP on the AWS name is a
+# permanent redirect to the sslip.io name, which resolves to this instance's
+# public IP and IS eligible for real certificates.
+http://ec2-54-176-92-17.us-west-1.compute.amazonaws.com {
+	redir https://54-176-92-17.sslip.io{uri} permanent
+}
+
+54-176-92-17.sslip.io {
+	encode zstd gzip
+	reverse_proxy 127.0.0.1:3000
+}
