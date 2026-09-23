@@ -406,6 +406,13 @@ now skip the greeting (`--greet` re-enables it), which halves the speech budget 
 needs, and the driver stops after three consecutive silent runs instead of recording provider
 failures as measurements.
 
+**Speech synthesis is the latency floor.** With the streaming reader above, the wait
+before the agent's first audible word is the provider's own time-to-first-audio: measured
+at 0.58 s for a five-word reply and 1.22 s for a nine-word reply on the free
+OpenRouter/Deepgram route, against 37-96 ms for providers built for real-time agents (Rime,
+Cartesia). Everything after that is the pipeline's own turn-taking, which the backchannel
+policy is deliberately kept out of.
+
 **Where any extra latency comes from.** The policy itself is not on the response path:
 timers, the cue, and its cancellation all live beside the conversation, and the
 acknowledgement never enters chat context. The only way backchanneling can slow the real

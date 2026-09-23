@@ -20,6 +20,7 @@ import logging
 import urllib.error
 import urllib.request
 import uuid
+from typing import Any
 
 from livekit.agents import tts
 from livekit.agents.types import DEFAULT_API_CONNECT_OPTIONS, APIConnectOptions
@@ -32,6 +33,8 @@ DEFAULT_VOICE = "flux-alexis-en"
 DEFAULT_SAMPLE_RATE = 24000
 DEFAULT_CHANNELS = 1
 REQUEST_TIMEOUT_SECONDS: float = 45.0
+CHUNK_BYTES: int = 9600
+"""Read size: 200 ms of 24 kHz mono 16-bit audio per read."""
 USER_AGENT = "blue-machines-baseline/0.1 (LiveKit backchannel benchmark)"
 
 
@@ -63,25 +66,20 @@ def parse_audio_format(content_type: str | None) -> tuple[int, int]:
     return rate, channels
 
 
-def _synthesize_blocking(
-    *,
-    api_key: str,
-    base_url: str,
-    model: str,
-    voice: str,
-    text: str,
-    timeout: float,
-) -> tuple[bytes, int, int]:
-    """Call the speech endpoint and return raw PCM plus its declared format."""
-
-    body = json.dumps(
-        {
-            "model": model,
-            "input": text,
-            "voice": voice,
-            "response_format": "pcm",
-        }
+def _request_body(*, model: str, voice: str, text: str) -> bytes:
+    return json.dumps(
+        {"model": model, "input": text, "voice": voice, "response_format": "pcm"}
     ).encode()
+
+
+def _open_speech(*, api_key: str, base_url: str, body: bytes, timeout: float) -> Any:
+    """Open the speech request and return the live response.
+
+    The endpoint streams its audio: for a sentence whose synthesis takes ten
+    seconds the first bytes arrive in about one and a half, so the caller decides
+    whether to read the body incrementally (lower latency) or as a whole.
+    """
+
     request = urllib.request.Request(
         f"{base_url.rstrip('/')}/audio/speech",
         data=body,
@@ -93,18 +91,42 @@ def _synthesize_blocking(
         method="POST",
     )
     try:
-        with urllib.request.urlopen(request, timeout=timeout) as response:
-            audio = response.read()
-            content_type = response.headers.get("Content-Type")
+        return urllib.request.urlopen(request, timeout=timeout)
     except urllib.error.HTTPError as exc:
         detail = exc.read().decode("utf-8", errors="replace")[:200]
         raise OpenRouterTTSError(f"OpenRouter speech HTTP {exc.code}: {detail}") from exc
     except urllib.error.URLError as exc:
         raise OpenRouterTTSError(f"OpenRouter unreachable: {exc.reason}") from exc
+
+
+def _synthesize_blocking(
+    *, api_key: str, base_url: str, model: str, voice: str, text: str, timeout: float
+) -> tuple[bytes, int, int]:
+    """Read the whole utterance at once (used by batch/smoke paths)."""
+
+    response = _open_speech(
+        api_key=api_key,
+        base_url=base_url,
+        body=_request_body(model=model, voice=voice, text=text),
+        timeout=timeout,
+    )
+    try:
+        audio = response.read()
+        content_type = response.headers.get("Content-Type")
+    finally:
+        response.close()
     if not audio:
         raise OpenRouterTTSError("OpenRouter returned no audio")
     rate, channels = parse_audio_format(content_type)
     return audio, rate, channels
+
+
+class _StreamFormat:
+    """Marker carrying the audio format read from the response headers."""
+
+    def __init__(self, sample_rate: int, channels: int) -> None:
+        self.sample_rate = sample_rate
+        self.channels = channels
 
 
 class TTS(tts.TTS):
@@ -151,27 +173,80 @@ class TTS(tts.TTS):
 
 
 class _ChunkedStream(tts.ChunkedStream):
-    """One request per utterance: the endpoint returns the whole waveform."""
+    """Stream one utterance: push audio as the endpoint produces it.
+
+    Buffering the whole response first is what made this adapter slow - the audio
+    is available long before the last byte (1.5 s versus 10.5 s for a long
+    sentence), so playback starts while synthesis is still finishing.
+    """
 
     def __init__(self, *, tts: TTS, input_text: str, conn_options: APIConnectOptions) -> None:
         super().__init__(tts=tts, input_text=input_text, conn_options=conn_options)
         self._tts: TTS = tts
 
     async def _run(self, output_emitter: tts.AudioEmitter) -> None:
-        audio, sample_rate, channels = await asyncio.to_thread(
-            _synthesize_blocking,
-            api_key=self._tts._api_key,
-            base_url=self._tts._base_url,
-            model=self._tts._model_name,
-            voice=self._tts.voice,
-            text=self.input_text,
-            timeout=self._tts._http_timeout,
-        )
-        output_emitter.initialize(
-            request_id=f"openrouter-tts-{uuid.uuid4().hex[:8]}",
-            sample_rate=sample_rate,
-            num_channels=channels,
-            mime_type="audio/pcm",
-        )
-        output_emitter.push(audio)
+        loop = asyncio.get_running_loop()
+        items: asyncio.Queue[object] = asyncio.Queue()
+        done = object()
+
+        def produce() -> None:
+            """Read the response in chunks, handing each one to the event loop."""
+
+            try:
+                response = _open_speech(
+                    api_key=self._tts._api_key,
+                    base_url=self._tts._base_url,
+                    body=_request_body(
+                        model=self._tts._model_name, voice=self._tts.voice, text=self.input_text
+                    ),
+                    timeout=self._tts._http_timeout,
+                )
+                try:
+                    rate, channels = parse_audio_format(response.headers.get("Content-Type"))
+                    loop.call_soon_threadsafe(items.put_nowait, _StreamFormat(rate, channels))
+                    while True:
+                        chunk = response.read(CHUNK_BYTES)
+                        if not chunk:
+                            break
+                        loop.call_soon_threadsafe(items.put_nowait, chunk)
+                finally:
+                    response.close()
+            except Exception as exc:  # noqa: BLE001 - forwarded to the awaiting task
+                loop.call_soon_threadsafe(items.put_nowait, exc)
+            finally:
+                loop.call_soon_threadsafe(items.put_nowait, done)
+
+        producer = asyncio.create_task(asyncio.to_thread(produce))
+        initialised = False
+        pushed = False
+        try:
+            while True:
+                item = await items.get()
+                if item is done:
+                    break
+                if isinstance(item, BaseException):
+                    if pushed:
+                        # Audio is already playing; a truncated answer is better
+                        # than replaying the utterance from the start.
+                        logger.warning("speech stream ended early: %s", item)
+                        break
+                    raise item
+                if isinstance(item, _StreamFormat):
+                    output_emitter.initialize(
+                        request_id=f"openrouter-tts-{uuid.uuid4().hex[:8]}",
+                        sample_rate=item.sample_rate,
+                        num_channels=item.channels,
+                        mime_type="audio/pcm",
+                    )
+                    initialised = True
+                    continue
+                if isinstance(item, bytes):
+                    if not initialised:
+                        raise OpenRouterTTSError("audio arrived before the format header")
+                    output_emitter.push(item)
+                    pushed = True
+        finally:
+            await producer
+        if not initialised:
+            raise OpenRouterTTSError("OpenRouter returned no audio")
         output_emitter.flush()

@@ -116,6 +116,11 @@ class EventLogTail:
             name = record.get("name")
             if name == "agent_response_started":
                 self.response_seen = True
+                continue
+            if name == "agent_response_ended" and not self.response_seen:
+                # Anything else that made noise (a cached cue, say) ending is not
+                # the answer; treating it as one ends the run before the reply.
+                continue
             if isinstance(name, str) and name in TERMINAL_EVENTS:
                 return name
         return None

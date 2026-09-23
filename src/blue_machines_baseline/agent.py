@@ -256,18 +256,28 @@ def attach_instrumentation(
             word_count=len(transcript.split()),
         )
 
+    speaking_episode_was_cue = False
+
     @session.on("agent_state_changed")
     def _on_agent_state_changed(event: Any) -> None:
+        nonlocal speaking_episode_was_cue
         old_state = getattr(event, "old_state", None)
         new_state = getattr(event, "new_state", None)
         if new_state == "speaking" and old_state != "speaking":
+            speaking_episode_was_cue = bool(backchannel and backchannel.active)
             record_if_open(
                 "backchannel_agent_speaking"
-                if backchannel and backchannel.active
+                if speaking_episode_was_cue
                 else "agent_response_started",
                 previous_state=old_state,
             )
         elif old_state == "speaking" and new_state != "speaking":
+            # A cue that opened as an acknowledgement closes as one: the engine
+            # reports its own completion, and labelling it an agent response would
+            # make a cue look like an answer to anything reading the event stream.
+            if speaking_episode_was_cue:
+                speaking_episode_was_cue = False
+                return
             record_if_open("agent_response_ended", next_state=new_state)
 
     @session.on("metrics_collected")
