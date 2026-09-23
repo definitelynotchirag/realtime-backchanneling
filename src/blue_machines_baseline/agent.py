@@ -15,7 +15,7 @@ from dotenv import load_dotenv
 from livekit import rtc
 from livekit.agents import Agent, AgentServer, AgentSession, JobContext, cli, inference, room_io
 from livekit.plugins import elevenlabs, google, groq, openai, silero
-from typesafe_sdk import AsyncTypeSafeClient
+from typesafe_sdk import AsyncTypeSafeClient, RetryPolicy
 
 from . import deepgram_stt, deepgram_tts, gemini_tts, groq_interim_stt, openrouter_tts
 from .backchannel import BackchannelEngine
@@ -605,6 +605,11 @@ async def entrypoint(ctx: JobContext) -> None:
                 api_key=settings.typesafe_api_key.get_secret_value(),
                 model=settings.jev_model,
                 timeout=settings.jev_timeout_seconds,
+                # The SDK retries 429/5xx responses with backoff, which pushes a call
+                # past the deadline the policy is waiting on. For a decision about a
+                # partial transcript a retry is also stale by definition: the next
+                # interim produces a fresher call, and the controller coalesces those.
+                retry=RetryPolicy(max_retries=0),
             ),
             model=settings.jev_model,
             approval_threshold=settings.jev_approval_threshold,
