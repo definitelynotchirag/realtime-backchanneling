@@ -238,7 +238,7 @@ class JevTurnController:
             return
         self._enabled = enabled
         if not enabled:
-            self._invalidate()
+            self._invalidate("disabled")
 
     def user_started(self) -> None:
         self._generation += 1
@@ -251,18 +251,18 @@ class JevTurnController:
         self._recent_partials.clear()
         self._pending_snapshot = None
         self._engine.set_semantic_approval(False)
-        self._cancel_task()
+        self._cancel_task("new_turn")
 
     def user_stopped(self) -> None:
         self._speaking = False
         self._pending_snapshot = None
         self._engine.set_semantic_approval(False)
-        self._invalidate()
+        self._invalidate("turn_ended")
 
     def on_transcript(self, transcript: str, *, is_final: bool) -> None:
         if is_final:
             self._engine.set_semantic_approval(False)
-            self._invalidate()
+            self._invalidate("final_transcript")
             return
         word_count = len(transcript.split())
         if (
@@ -309,17 +309,22 @@ class JevTurnController:
 
     async def aclose(self) -> None:
         self._speaking = False
-        self._invalidate()
+        self._invalidate("session_closed")
         classifier_close = getattr(self._classifier, "aclose", None)
         if callable(classifier_close):
             await classifier_close()
 
-    def _invalidate(self) -> None:
+    def _invalidate(self, reason: str) -> None:
         self._generation += 1
-        self._cancel_task()
+        self._cancel_task(reason)
 
-    def _cancel_task(self) -> None:
+    def _cancel_task(self, reason: str | None = None) -> None:
+        # A cancelled classification costs a provider call and answers nothing, so it
+        # is reported rather than dropped: without it the request count in the log does
+        # not add up to the decisions, timeouts and errors it produced.
         if self._task is not None and not self._task.done():
+            if reason is not None:
+                self._on_event("jev_decision_cancelled", reason=reason)
             self._task.cancel()
         self._task = None
 

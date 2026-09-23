@@ -15,7 +15,7 @@ without a stack stamp, or that never got an answer are excluded rather than repo
 as measurements for the wrong pipeline.
 
 Usage:
-    uv run python scripts/extract-benchmark-runs.py --stack stt=deepgram,tts=deepgram_tts
+    uv run python scripts/extract-benchmark-runs.py --stack stt=deepgram,llm=groq,tts=deepgram_tts
 """
 
 from __future__ import annotations
@@ -73,11 +73,18 @@ def main() -> int:
     parser.add_argument("--out", type=Path, default=Path("outputs/benchmark-events.jsonl"))
     parser.add_argument(
         "--stack",
-        default="stt=deepgram,tts=deepgram_tts",
+        default="stt=deepgram,llm=groq,tts=deepgram_tts",
         help="comma-separated provider names a run must match, e.g. stt=groq,tts=groq",
     )
     args = parser.parse_args()
-    wanted = dict(part.split("=", 1) for part in args.stack.split(",") if "=" in part)
+    # "stt=deepgram" names the session_started field "stt_provider"; the detector is
+    # the one field that is not a provider, so it keeps its own name.
+    wanted: dict[str, str] = {}
+    for part in args.stack.split(","):
+        if "=" not in part:
+            continue
+        key, value = part.split("=", 1)
+        wanted["eot_detector" if key == "eot" else f"{key}_provider"] = value
 
     if not args.events.exists():
         print(f"no event log at {args.events}; run the sweep first")

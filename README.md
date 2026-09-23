@@ -377,7 +377,7 @@ cue the moment the user yields.
 ```
 blue-machines-scenario --scenarios all --modes baseline,backchannel,jev_backchannel --repeats 3
         -> outputs/baseline-events.jsonl        every event, gitignored
-scripts/extract-benchmark-runs.py --stack stt=deepgram,tts=deepgram_tts
+scripts/extract-benchmark-runs.py --stack stt=deepgram,llm=groq,tts=deepgram_tts
         -> outputs/benchmark-events.jsonl       committed evidence
 blue-machines-benchmark --events ... --report ...
         -> outputs/benchmark-report-provider.json
@@ -394,9 +394,10 @@ loud how many runs it skipped and why.
 ### The measured result
 
 `outputs/benchmark-report-provider.json` (built from `outputs/benchmark-events.jsonl`, the
-scripted sweep on the **all-Groq stack**: Whisper STT, `openai/gpt-oss-120b`, Orpheus TTS;
-27 measured runs across five scenarios, four of them complete at three repeats per mode)
-reads:
+scripted sweep on the **streaming stack**: Deepgram `nova-3` streaming STT, Groq
+`openai/gpt-oss-120b`, Deepgram Aura-2 streaming speech, LiveKit's turn detector) reads.
+Every scenario runs in all three modes, three repeats each, in real rooms - and each run
+records the stack it used, so the table cannot mix providers.
 
 | Metric | Baseline | Timer backchannel | Delta |
 |---|---|---|---|
@@ -418,21 +419,21 @@ at P50 and 2.5 s faster at P95, and the counters that would reveal damage — de
 responses, collisions — are zero in both. The 781 ms P50 is the real answer latency of the
 Groq stack; the earlier 4.6 s figure was a quota-blocked speech provider, not the policy.
 
-Limits of this sweep, stated plainly: Orpheus on the free tier allows **3600 speech tokens
-per day** (and 100 requests/day), which is roughly seventy short utterances; the sweep spent
-that budget and stopped, so `noisy_audio`, `multiple_backchannels` and `stop_before_ack` have
-no measured runs, and `n` is 12-13 per arm — enough for a P50 with a reported σ, not for a
-trustworthy P95. Jev mode is absent because the reachable STT is final-only. Scripted runs
-now skip the greeting (`--greet` re-enables it), which halves the speech budget a sweep
-needs, and the driver stops after three consecutive silent runs instead of recording provider
-failures as measurements.
+Limits of this sweep, stated plainly: one worker drives one room at a time, so the runs are
+sequential and `n` per arm is the number of scripted repeats, not a production sample — a P50
+with a reported σ, and a P95 that should be read as an indicator rather than a bound. Every
+run is a real room with real STT, LLM and speech calls, so a sweep costs provider usage, and
+the driver stops after four consecutive unanswered runs instead of recording a provider
+outage as data. Scripted runs skip the greeting (`--greet` re-enables it) to keep each sweep
+cheap.
 
 **Speech synthesis is the latency floor.** With the streaming reader above, the wait
 before the agent's first audible word is the provider's own time-to-first-audio: measured
-at 0.58 s for a five-word reply and 1.22 s for a nine-word reply on the free
-OpenRouter/Deepgram route, against 37-96 ms for providers built for real-time agents (Rime,
-Cartesia). Everything after that is the pipeline's own turn-taking, which the backchannel
-policy is deliberately kept out of.
+at 0.96 s for a five-word reply and 1.11 s for a nine-word reply through the Deepgram
+adapter, against 37-96 ms for providers built for real-time agents (Rime, Cartesia). What
+is left after that is the pipeline's own turn-taking, which the backchannel policy is
+deliberately kept out of: the policy never sits between the user's turn ending and the
+agent's answer starting.
 
 **Where any extra latency comes from.** The policy itself is not on the response path:
 timers, the cue, and its cancellation all live beside the conversation, and the
@@ -446,12 +447,10 @@ those two counters first: a delta without them is provider variance, not the pol
 
 **Before running this at production scale I would change:**
 
-1. **Stream the acknowledgement audio.** The direct Gemini TTS provider used for the local
-   runs is non-streaming, so the agent cannot begin speaking until the whole utterance is
-   synthesised (measured 2.8-5.5 s depending on model, against sub-second TTFB for
-   streaming providers). That inflates absolute response latency for *both* arms equally,
-   so the comparison stays fair, but it is a provider property, not a property of the
-   policy, and production should use a streaming TTS.
+1. **Generate the cues for the session's voice.** The acknowledgement clips are
+   pre-rendered, which is what makes a cue audible ~2 ms after the decision - but they are
+   fixed files, so they do not match a different agent voice. At scale they should be
+   synthesised once per voice at session start, or streamed on first use, and cached.
 2. **Feed the real turn detector's probability into the EOU decision, not just the policy.**
    Today the detector runs deliberately in parallel with LiveKit's own end-of-turn logic so
    the measurement is independent; at scale it should be one shared detector to avoid

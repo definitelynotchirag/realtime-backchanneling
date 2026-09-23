@@ -291,6 +291,55 @@ def test_jev_timeout_fails_closed_without_playing_audio() -> None:
     asyncio.run(scenario())
 
 
+def test_jev_controller_accounts_for_a_classification_it_cancels() -> None:
+    """A call cancelled when the turn ends costs a request and answers nothing.
+
+    Without this event the request count in the log never reconciles with the
+    decisions, timeouts and errors it produced, which hides both wasted spend and
+    how often a decision was thrown away for arriving too late.
+    """
+
+    async def scenario() -> None:
+        events: list[tuple[str, dict]] = []
+        started = asyncio.Event()
+        release = asyncio.Event()
+
+        class SlowClassifier:
+            async def classify(self, _transcript: str, _context=None):
+                started.set()
+                await release.wait()
+                return SimpleNamespace(approved=True)
+
+        engine = BackchannelEngine(
+            play=lambda: FakeHandle(),
+            delay_seconds=0,
+            cooldown_seconds=0,
+            semantic_required=True,
+        )
+        controller = JevTurnController(
+            engine,
+            SlowClassifier(),
+            min_interval_seconds=0,
+            timeout_seconds=5,
+            on_event=lambda name, **data: events.append((name, data)),
+        )
+        engine.user_started()
+        controller.user_started()
+        controller.on_transcript("this is a continuing explanation now", is_final=False)
+        await started.wait()
+        controller.user_stopped()
+        release.set()
+        await asyncio.sleep(0.02)
+
+        assert ("jev_decision_cancelled", {"reason": "turn_ended"}) in events
+        # The cancelled call must not be reported as a decision.
+        assert not [name for name, _ in events if name == "jev_decision"]
+        await controller.aclose()
+        await engine.aclose()
+
+    asyncio.run(scenario())
+
+
 def test_jev_error_fails_closed_without_playing_audio() -> None:
     async def scenario() -> None:
         played = False
