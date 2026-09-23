@@ -80,6 +80,17 @@ curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:3000/   # dashboard
 One worker only: a second registered worker makes room dispatch and
 benchmark labels ambiguous.
 
+## Agent name isolation (important)
+
+The deployment registers its worker as **`blue-machines-prod`** via
+`LIVEKIT_AGENT_NAME` in `.env`, and the API mints tokens that dispatch to that
+same name (both read the variable). Keep it unique: LiveKit Cloud round-robins
+dispatch between *all* workers registered under one agent name, so a
+development worker running anywhere else under the default
+`blue-machines-baseline` name would steal dispatches for public rooms — the
+public demo would then depend on whichever machine happened to win, and on a
+laptop that is busy, asleep, or closed, rooms would get no agent at all.
+
 ## Notes
 
 - Runtime data lives in `outputs/` on the host (`baseline-events.jsonl` is
