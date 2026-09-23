@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-23T21:27:16.954971+00:00",
+  "generated_at": "2026-09-23T21:35:04.636635+00:00",
   "overall": {
     "backchannel": {
       "audible_backchannels": 19,
@@ -34,7 +34,7 @@
       "collision_events": 0,
       "delayed_responses": 0,
       "end_of_turn_risks": 0,
-      "eot_delay_p50_ms": 577.563,
+      "eot_delay_p50_ms": 577.592,
       "eot_delays_ms": [
         3444.984,
         788.515,
@@ -74,10 +74,13 @@
         577.646,
         0.0,
         577.185,
-        0.0
+        0.0,
+        873.214,
+        872.501,
+        861.471
       ],
-      "final_transcripts": 63,
-      "interim_transcripts": 182,
+      "final_transcripts": 66,
+      "interim_transcripts": 188,
       "jev_decision_latencies_ms": [],
       "jev_decision_latency_p50_ms": null,
       "jev_decision_latency_p95_ms": null,
@@ -136,15 +139,18 @@
         323.445,
         290.46,
         182.517,
-        561.998
+        561.998,
+        145.179,
+        156.067,
+        141.381
       ],
-      "llm_ttft_p50_ms": 350.457,
-      "llm_ttft_p95_ms": 535.007,
+      "llm_ttft_p50_ms": 341.26,
+      "llm_ttft_p95_ms": 533.795,
       "long_user_turns": 16,
       "mode": "backchannel",
       "overlapping_backchannels": 19,
-      "response_delta_p50_ms": 2032.149,
-      "response_delta_p95_ms": -104.473,
+      "response_delta_p50_ms": 1561.512,
+      "response_delta_p95_ms": -254.792,
       "response_latencies_ms": [
         3927.545,
         1343.768,
@@ -166,14 +172,17 @@
         3381.117,
         1398.463,
         6427.601,
-        1850.207
+        1850.207,
+        1509.699,
+        1402.989,
+        2985.339
       ],
       "response_max_ms": 8059.595,
       "response_min_ms": 1121.336,
-      "response_p50_ms": 3834.234,
-      "response_p95_ms": 7874.639,
-      "response_samples": 21,
-      "response_stdev_ms": 2076.674,
+      "response_p50_ms": 3363.597,
+      "response_p95_ms": 7724.32,
+      "response_samples": 24,
+      "response_stdev_ms": 2043.18,
       "run_id": "aggregate",
       "scenario_id": "all",
       "stt_audio_duration_ms": [
@@ -209,9 +218,12 @@
         3750.0,
         3050.0,
         4500.0,
-        4100.0
+        4100.0,
+        4800.0,
+        4800.0,
+        4900.0
       ],
-      "stt_audio_duration_p50_ms": 4650.0,
+      "stt_audio_duration_p50_ms": 4800.0,
       "stt_duration_ms": [],
       "stt_duration_p50_ms": null,
       "tts_ttfb_ms": [
@@ -249,10 +261,13 @@
         898.823,
         -1000.0,
         846.513,
-        1132.218
+        1132.218,
+        1010.885,
+        893.849,
+        2513.387
       ],
-      "tts_ttfb_p50_ms": 909.881,
-      "tts_ttfb_p95_ms": 5762.736,
+      "tts_ttfb_p50_ms": 914.133,
+      "tts_ttfb_p95_ms": 5738.308,
       "unpaired_turns": 4
     },
     "baseline": {
@@ -500,8 +515,8 @@
       "unpaired_turns": 4
     },
     "jev_backchannel": {
-      "audible_backchannels": 16,
-      "backchannel_count": 16,
+      "audible_backchannels": 28,
+      "backchannel_count": 28,
       "backchannel_latencies_ms": [
         14.04,
         28.839,
@@ -518,18 +533,30 @@
         19.088,
         2.994,
         14.869,
-        2.802
+        2.802,
+        38.914,
+        2.248,
+        22.952,
+        27.312,
+        2.202,
+        80.239,
+        18.49,
+        19.526,
+        2.222,
+        23.947,
+        20.852,
+        60.115
       ],
-      "backchannel_latency_p50_ms": 20.601,
-      "backchannel_latency_p95_ms": 32.584,
-      "backchannel_latency_samples": 16,
-      "backchannel_latency_stdev_ms": 9.417,
-      "backchannels_per_long_turn": 1.0,
-      "cancelled_backchannels": 1,
+      "backchannel_latency_p50_ms": 21.192,
+      "backchannel_latency_p95_ms": 54.411,
+      "backchannel_latency_samples": 28,
+      "backchannel_latency_stdev_ms": 16.701,
+      "backchannels_per_long_turn": 1.077,
+      "cancelled_backchannels": 3,
       "collision_events": 0,
       "delayed_responses": 0,
       "end_of_turn_risks": 0,
-      "eot_delay_p50_ms": 577.427,
+      "eot_delay_p50_ms": 577.293,
       "eot_delays_ms": [
         577.713,
         577.73,
@@ -568,10 +595,27 @@
         0.0,
         816.959,
         836.049,
-        862.244
+        862.244,
+        578.126,
+        577.608,
+        0.0,
+        577.293,
+        0.0,
+        577.752,
+        0.0,
+        577.204,
+        0.0,
+        579.416,
+        0.0,
+        620.445,
+        0.0,
+        577.681,
+        0.0,
+        578.013,
+        0.0
       ],
-      "final_transcripts": 72,
-      "interim_transcripts": 188,
+      "final_transcripts": 101,
+      "interim_transcripts": 271,
       "jev_decision_latencies_ms": [
         413.161,
         1242.363,
@@ -592,10 +636,23 @@
         868.853,
         303.862,
         964.702,
-        348.869
+        348.869,
+        873.077,
+        2810.051,
+        361.783,
+        1548.294,
+        993.462,
+        966.071,
+        1201.779,
+        978.605,
+        868.495,
+        1415.705,
+        1035.701,
+        878.253,
+        900.736
       ],
-      "jev_decision_latency_p50_ms": 874.642,
-      "jev_decision_latency_p95_ms": 1527.95,
+      "jev_decision_latency_p50_ms": 911.877,
+      "jev_decision_latency_p95_ms": 1699.94,
       "jev_errors": 0,
       "jev_timeouts": 2,
       "llm_ttft_ms": [
@@ -652,15 +709,43 @@
         318.605,
         444.305,
         174.914,
-        413.334
+        413.334,
+        193.231,
+        314.499,
+        460.72,
+        430.496,
+        162.297,
+        753.932,
+        566.859,
+        461.099,
+        479.456,
+        413.803,
+        156.52,
+        459.775,
+        453.061,
+        322.053,
+        512.996,
+        449.459,
+        289.179,
+        161.26,
+        430.32,
+        125.793,
+        604.898,
+        499.976,
+        120.964,
+        152.306,
+        464.91,
+        119.475,
+        420.911,
+        611.484
       ],
-      "llm_ttft_p50_ms": 429.171,
-      "llm_ttft_p95_ms": 633.968,
-      "long_user_turns": 16,
+      "llm_ttft_p50_ms": 429.865,
+      "llm_ttft_p95_ms": 611.155,
+      "long_user_turns": 26,
       "mode": "jev_backchannel",
-      "overlapping_backchannels": 16,
-      "response_delta_p50_ms": 565.524,
-      "response_delta_p95_ms": -1328.436,
+      "overlapping_backchannels": 28,
+      "response_delta_p50_ms": 1284.634,
+      "response_delta_p95_ms": -1460.999,
       "response_latencies_ms": [
         1463.214,
         1474.549,
@@ -684,14 +769,23 @@
         1537.074,
         2627.698,
         1358.805,
-        1626.77
+        1626.77,
+        1629.703,
+        4003.682,
+        1689.244,
+        3647.33,
+        3492.181,
+        3004.74,
+        4519.33,
+        3854.663,
+        3168.698
       ],
       "response_max_ms": 6853.093,
       "response_min_ms": 1209.346,
-      "response_p50_ms": 2367.609,
-      "response_p95_ms": 6650.676,
-      "response_samples": 23,
-      "response_stdev_ms": 1730.418,
+      "response_p50_ms": 3086.719,
+      "response_p95_ms": 6518.113,
+      "response_samples": 32,
+      "response_stdev_ms": 1551.396,
       "run_id": "aggregate",
       "scenario_id": "all",
       "stt_audio_duration_ms": [
@@ -733,9 +827,38 @@
         1850.0,
         4750.0,
         4850.0,
-        4900.0
+        4900.0,
+        5400.0,
+        3000.0,
+        8900.0,
+        5300.0,
+        3750.0,
+        9250.0,
+        5300.0,
+        3350.0,
+        7900.0,
+        1350.0,
+        5300.0,
+        2600.0,
+        4950.0,
+        5350.0,
+        2600.0,
+        3950.0,
+        1200.0,
+        5300.0,
+        2600.0,
+        5100.0,
+        5350.0,
+        3850.0,
+        1950.0,
+        5300.0,
+        3500.0,
+        2050.0,
+        5300.0,
+        2850.0,
+        2950.0
       ],
-      "stt_audio_duration_p50_ms": 4450.0,
+      "stt_audio_duration_p50_ms": 4300.0,
       "stt_duration_ms": [],
       "stt_duration_p50_ms": null,
       "tts_ttfb_ms": [
@@ -789,11 +912,27 @@
         928.213,
         1887.478,
         892.55,
-        892.235
+        892.235,
+        1095.729,
+        -1000.0,
+        1027.367,
+        912.4,
+        -1000.0,
+        850.392,
+        -1000.0,
+        847.489,
+        -1000.0,
+        859.245,
+        -1000.0,
+        1585.548,
+        -1000.0,
+        977.976,
+        -1000.0,
+        831.675
       ],
-      "tts_ttfb_p50_ms": 875.082,
-      "tts_ttfb_p95_ms": 1791.177,
-      "unpaired_turns": 5
+      "tts_ttfb_p50_ms": 869.921,
+      "tts_ttfb_p95_ms": 1679.468,
+      "unpaired_turns": 6
     }
   },
   "provenance": {
@@ -802,7 +941,7 @@
     "note": "Measured from labelled worker sessions recorded in the event log.",
     "provider_latency_available": true
   },
-  "run_count": 68,
+  "run_count": 80,
   "scenario_count": 8,
   "scenarios": [
     {
@@ -1664,36 +1803,52 @@
           "unpaired_turns": 1
         },
         "jev_backchannel": {
-          "audible_backchannels": 2,
-          "backchannel_count": 2,
+          "audible_backchannels": 7,
+          "backchannel_count": 7,
           "backchannel_latencies_ms": [
             21.532,
-            21.778
+            21.778,
+            38.914,
+            2.248,
+            22.952,
+            27.312,
+            2.202
           ],
-          "backchannel_latency_p50_ms": 21.655,
-          "backchannel_latency_p95_ms": 21.766,
-          "backchannel_latency_samples": 2,
-          "backchannel_latency_stdev_ms": 0.123,
-          "backchannels_per_long_turn": 1.0,
+          "backchannel_latency_p50_ms": 21.778,
+          "backchannel_latency_p95_ms": 35.433,
+          "backchannel_latency_samples": 7,
+          "backchannel_latency_stdev_ms": 12.282,
+          "backchannels_per_long_turn": 1.4,
           "cancelled_backchannels": 0,
           "collision_events": 0,
           "delayed_responses": 0,
           "end_of_turn_risks": 0,
-          "eot_delay_p50_ms": 288.69,
+          "eot_delay_p50_ms": 577.293,
           "eot_delays_ms": [
             577.381,
             0.0,
             577.666,
+            0.0,
+            578.126,
+            577.608,
+            0.0,
+            577.293,
             0.0
           ],
-          "final_transcripts": 9,
-          "interim_transcripts": 23,
+          "final_transcripts": 19,
+          "interim_transcripts": 62,
           "jev_decision_latencies_ms": [
             436.668,
-            444.823
+            444.823,
+            873.077,
+            2810.051,
+            361.783,
+            1548.294,
+            993.462,
+            966.071
           ],
-          "jev_decision_latency_p50_ms": 440.745,
-          "jev_decision_latency_p95_ms": 444.415,
+          "jev_decision_latency_p50_ms": 919.574,
+          "jev_decision_latency_p95_ms": 2368.436,
           "jev_errors": 0,
           "jev_timeouts": 1,
           "llm_ttft_ms": [
@@ -1703,37 +1858,64 @@
             447.844,
             313.448,
             190.007,
-            1030.658
+            1030.658,
+            193.231,
+            314.499,
+            460.72,
+            430.496,
+            162.297,
+            753.932,
+            566.859,
+            461.099,
+            479.456
           ],
-          "llm_ttft_p50_ms": 447.844,
-          "llm_ttft_p95_ms": 876.723,
-          "long_user_turns": 2,
+          "llm_ttft_p50_ms": 454.282,
+          "llm_ttft_p95_ms": 823.113,
+          "long_user_turns": 5,
           "mode": "jev_backchannel",
-          "overlapping_backchannels": 2,
-          "response_delta_p50_ms": 12.984,
-          "response_delta_p95_ms": -1329.559,
+          "overlapping_backchannels": 7,
+          "response_delta_p50_ms": -168.596,
+          "response_delta_p95_ms": 101.901,
           "response_latencies_ms": [
             1478.216,
-            2263.433
+            2263.433,
+            1629.703,
+            4003.682,
+            1689.244
           ],
-          "response_max_ms": 2263.433,
+          "response_max_ms": 4003.682,
           "response_min_ms": 1478.216,
-          "response_p50_ms": 1870.824,
-          "response_p95_ms": 2224.172,
-          "response_samples": 2,
-          "response_stdev_ms": 392.609,
+          "response_p50_ms": 1689.244,
+          "response_p95_ms": 3655.632,
+          "response_samples": 5,
+          "response_stdev_ms": 934.189,
           "run_id": "aggregate",
           "scenario_id": "all",
-          "stt_audio_duration_ms": [],
-          "stt_audio_duration_p50_ms": null,
+          "stt_audio_duration_ms": [
+            5400.0,
+            3000.0,
+            8900.0,
+            5300.0,
+            3750.0,
+            9250.0,
+            5300.0,
+            3350.0,
+            7900.0,
+            1350.0
+          ],
+          "stt_audio_duration_p50_ms": 5300.0,
           "stt_duration_ms": [],
           "stt_duration_p50_ms": null,
           "tts_ttfb_ms": [
             858.023,
-            906.783
+            906.783,
+            1095.729,
+            -1000.0,
+            1027.367,
+            912.4
           ],
-          "tts_ttfb_p50_ms": 882.403,
-          "tts_ttfb_p95_ms": 904.345,
+          "tts_ttfb_p50_ms": 909.591,
+          "tts_ttfb_p95_ms": 1078.639,
           "unpaired_turns": 0
         }
       },
@@ -2226,6 +2408,213 @@
           ],
           "tts_ttfb_p50_ms": 906.783,
           "tts_ttfb_p95_ms": 906.783,
+          "unpaired_turns": 0
+        },
+        {
+          "audible_backchannels": 2,
+          "backchannel_count": 2,
+          "backchannel_latencies_ms": [
+            38.914,
+            2.248
+          ],
+          "backchannel_latency_p50_ms": 20.581,
+          "backchannel_latency_p95_ms": 37.081,
+          "backchannel_latency_samples": 2,
+          "backchannel_latency_stdev_ms": 18.333,
+          "backchannels_per_long_turn": 2.0,
+          "cancelled_backchannels": 0,
+          "collision_events": 0,
+          "delayed_responses": 0,
+          "end_of_turn_risks": 0,
+          "eot_delay_p50_ms": 578.126,
+          "eot_delays_ms": [
+            578.126
+          ],
+          "final_transcripts": 3,
+          "interim_transcripts": 13,
+          "jev_decision_latencies_ms": [
+            873.077,
+            2810.051,
+            361.783
+          ],
+          "jev_decision_latency_p50_ms": 873.077,
+          "jev_decision_latency_p95_ms": 2616.354,
+          "jev_errors": 0,
+          "jev_timeouts": 0,
+          "llm_ttft_ms": [
+            193.231,
+            314.499,
+            460.72
+          ],
+          "llm_ttft_p50_ms": 314.499,
+          "llm_ttft_p95_ms": 446.098,
+          "long_user_turns": 1,
+          "mode": "jev_backchannel",
+          "overlapping_backchannels": 2,
+          "response_delta_p50_ms": null,
+          "response_delta_p95_ms": null,
+          "response_latencies_ms": [
+            1629.703
+          ],
+          "response_max_ms": 1629.703,
+          "response_min_ms": 1629.703,
+          "response_p50_ms": 1629.703,
+          "response_p95_ms": 1629.703,
+          "response_samples": 1,
+          "response_stdev_ms": null,
+          "run_id": "long_monologue-jev_backchannel-01-c2aa17",
+          "scenario_id": "long_monologue",
+          "stt_audio_duration_ms": [
+            5400.0,
+            3000.0,
+            8900.0
+          ],
+          "stt_audio_duration_p50_ms": 5400.0,
+          "stt_duration_ms": [],
+          "stt_duration_p50_ms": null,
+          "tts_ttfb_ms": [
+            1095.729
+          ],
+          "tts_ttfb_p50_ms": 1095.729,
+          "tts_ttfb_p95_ms": 1095.729,
+          "unpaired_turns": 0
+        },
+        {
+          "audible_backchannels": 1,
+          "backchannel_count": 1,
+          "backchannel_latencies_ms": [
+            22.952
+          ],
+          "backchannel_latency_p50_ms": 22.952,
+          "backchannel_latency_p95_ms": 22.952,
+          "backchannel_latency_samples": 1,
+          "backchannel_latency_stdev_ms": null,
+          "backchannels_per_long_turn": 1.0,
+          "cancelled_backchannels": 0,
+          "collision_events": 0,
+          "delayed_responses": 0,
+          "end_of_turn_risks": 0,
+          "eot_delay_p50_ms": 288.804,
+          "eot_delays_ms": [
+            577.608,
+            0.0
+          ],
+          "final_transcripts": 3,
+          "interim_transcripts": 13,
+          "jev_decision_latencies_ms": [
+            1548.294
+          ],
+          "jev_decision_latency_p50_ms": 1548.294,
+          "jev_decision_latency_p95_ms": 1548.294,
+          "jev_errors": 0,
+          "jev_timeouts": 0,
+          "llm_ttft_ms": [
+            430.496,
+            162.297,
+            753.932
+          ],
+          "llm_ttft_p50_ms": 430.496,
+          "llm_ttft_p95_ms": 721.588,
+          "long_user_turns": 1,
+          "mode": "jev_backchannel",
+          "overlapping_backchannels": 1,
+          "response_delta_p50_ms": null,
+          "response_delta_p95_ms": null,
+          "response_latencies_ms": [
+            4003.682
+          ],
+          "response_max_ms": 4003.682,
+          "response_min_ms": 4003.682,
+          "response_p50_ms": 4003.682,
+          "response_p95_ms": 4003.682,
+          "response_samples": 1,
+          "response_stdev_ms": null,
+          "run_id": "long_monologue-jev_backchannel-02-7357f0",
+          "scenario_id": "long_monologue",
+          "stt_audio_duration_ms": [
+            5300.0,
+            3750.0,
+            9250.0
+          ],
+          "stt_audio_duration_p50_ms": 5300.0,
+          "stt_duration_ms": [],
+          "stt_duration_p50_ms": null,
+          "tts_ttfb_ms": [
+            -1000.0,
+            1027.367
+          ],
+          "tts_ttfb_p50_ms": 13.683,
+          "tts_ttfb_p95_ms": 925.999,
+          "unpaired_turns": 0
+        },
+        {
+          "audible_backchannels": 2,
+          "backchannel_count": 2,
+          "backchannel_latencies_ms": [
+            27.312,
+            2.202
+          ],
+          "backchannel_latency_p50_ms": 14.757,
+          "backchannel_latency_p95_ms": 26.056,
+          "backchannel_latency_samples": 2,
+          "backchannel_latency_stdev_ms": 12.555,
+          "backchannels_per_long_turn": 2.0,
+          "cancelled_backchannels": 0,
+          "collision_events": 0,
+          "delayed_responses": 0,
+          "end_of_turn_risks": 0,
+          "eot_delay_p50_ms": 288.647,
+          "eot_delays_ms": [
+            577.293,
+            0.0
+          ],
+          "final_transcripts": 4,
+          "interim_transcripts": 13,
+          "jev_decision_latencies_ms": [
+            993.462,
+            966.071
+          ],
+          "jev_decision_latency_p50_ms": 979.766,
+          "jev_decision_latency_p95_ms": 992.092,
+          "jev_errors": 0,
+          "jev_timeouts": 0,
+          "llm_ttft_ms": [
+            566.859,
+            461.099,
+            479.456
+          ],
+          "llm_ttft_p50_ms": 479.456,
+          "llm_ttft_p95_ms": 558.119,
+          "long_user_turns": 1,
+          "mode": "jev_backchannel",
+          "overlapping_backchannels": 2,
+          "response_delta_p50_ms": null,
+          "response_delta_p95_ms": null,
+          "response_latencies_ms": [
+            1689.244
+          ],
+          "response_max_ms": 1689.244,
+          "response_min_ms": 1689.244,
+          "response_p50_ms": 1689.244,
+          "response_p95_ms": 1689.244,
+          "response_samples": 1,
+          "response_stdev_ms": null,
+          "run_id": "long_monologue-jev_backchannel-03-06e09a",
+          "scenario_id": "long_monologue",
+          "stt_audio_duration_ms": [
+            5300.0,
+            3350.0,
+            7900.0,
+            1350.0
+          ],
+          "stt_audio_duration_p50_ms": 4325.0,
+          "stt_duration_ms": [],
+          "stt_duration_p50_ms": null,
+          "tts_ttfb_ms": [
+            912.4
+          ],
+          "tts_ttfb_p50_ms": 912.4,
+          "tts_ttfb_p95_ms": 912.4,
           "unpaired_turns": 0
         }
       ],
@@ -3157,36 +3546,50 @@
           "unpaired_turns": 0
         },
         "jev_backchannel": {
-          "audible_backchannels": 2,
-          "backchannel_count": 2,
+          "audible_backchannels": 6,
+          "backchannel_count": 6,
           "backchannel_latencies_ms": [
             21.724,
-            25.118
+            25.118,
+            80.239,
+            18.49,
+            19.526,
+            2.222
           ],
-          "backchannel_latency_p50_ms": 23.421,
-          "backchannel_latency_p95_ms": 24.948,
-          "backchannel_latency_samples": 2,
-          "backchannel_latency_stdev_ms": 1.697,
-          "backchannels_per_long_turn": 0.5,
-          "cancelled_backchannels": 0,
+          "backchannel_latency_p50_ms": 20.625,
+          "backchannel_latency_p95_ms": 66.459,
+          "backchannel_latency_samples": 6,
+          "backchannel_latency_stdev_ms": 24.506,
+          "backchannels_per_long_turn": 0.75,
+          "cancelled_backchannels": 2,
           "collision_events": 0,
           "delayed_responses": 0,
           "end_of_turn_risks": 0,
-          "eot_delay_p50_ms": 288.618,
+          "eot_delay_p50_ms": 288.602,
           "eot_delays_ms": [
             577.236,
             0.0,
             577.262,
+            0.0,
+            577.752,
+            0.0,
+            577.204,
+            0.0,
+            579.416,
             0.0
           ],
-          "final_transcripts": 7,
-          "interim_transcripts": 15,
+          "final_transcripts": 17,
+          "interim_transcripts": 39,
           "jev_decision_latencies_ms": [
             920.188,
-            1075.786
+            1075.786,
+            1201.779,
+            978.605,
+            868.495,
+            1415.705
           ],
-          "jev_decision_latency_p50_ms": 997.987,
-          "jev_decision_latency_p95_ms": 1068.006,
+          "jev_decision_latency_p50_ms": 1027.196,
+          "jev_decision_latency_p95_ms": 1362.224,
           "jev_errors": 0,
           "jev_timeouts": 0,
           "llm_ttft_ms": [
@@ -3196,45 +3599,74 @@
             415.494,
             535.477,
             509.042,
-            425.576
+            425.576,
+            413.803,
+            156.52,
+            459.775,
+            453.061,
+            322.053,
+            512.996,
+            449.459,
+            289.179,
+            161.26,
+            430.32
           ],
           "llm_ttft_p50_ms": 423.715,
-          "llm_ttft_p95_ms": 527.546,
-          "long_user_turns": 4,
+          "llm_ttft_p95_ms": 517.492,
+          "long_user_turns": 8,
           "mode": "jev_backchannel",
-          "overlapping_backchannels": 2,
-          "response_delta_p50_ms": -4062.711,
-          "response_delta_p95_ms": -5193.496,
+          "overlapping_backchannels": 6,
+          "response_delta_p50_ms": -4534.888,
+          "response_delta_p95_ms": -5283.798,
           "response_latencies_ms": [
             4420.514,
-            3818.5
+            3818.5,
+            3647.33,
+            3492.181,
+            3004.74
           ],
           "response_max_ms": 4420.514,
-          "response_min_ms": 3818.5,
-          "response_p50_ms": 4119.507,
-          "response_p95_ms": 4390.413,
-          "response_samples": 2,
-          "response_stdev_ms": 301.007,
+          "response_min_ms": 3004.74,
+          "response_p50_ms": 3647.33,
+          "response_p95_ms": 4300.111,
+          "response_samples": 5,
+          "response_stdev_ms": 460.393,
           "run_id": "aggregate",
           "scenario_id": "all",
           "stt_audio_duration_ms": [
             5350.0,
             2550.0,
             3950.0,
-            1100.0
+            1100.0,
+            5300.0,
+            2600.0,
+            4950.0,
+            5350.0,
+            2600.0,
+            3950.0,
+            1200.0,
+            5300.0,
+            2600.0,
+            5100.0
           ],
-          "stt_audio_duration_p50_ms": 3250.0,
+          "stt_audio_duration_p50_ms": 3950.0,
           "stt_duration_ms": [],
           "stt_duration_p50_ms": null,
           "tts_ttfb_ms": [
             -1000.0,
             1643.519,
             -1000.0,
-            841.243
+            841.243,
+            -1000.0,
+            850.392,
+            -1000.0,
+            847.489,
+            -1000.0,
+            859.245
           ],
           "tts_ttfb_p50_ms": -79.379,
-          "tts_ttfb_p95_ms": 1523.178,
-          "unpaired_turns": 2
+          "tts_ttfb_p95_ms": 1290.596,
+          "unpaired_turns": 3
         }
       },
       "description": "A pause in the middle of one sentence.",
@@ -3737,6 +4169,214 @@
           "tts_ttfb_p50_ms": -79.379,
           "tts_ttfb_p95_ms": 749.181,
           "unpaired_turns": 1
+        },
+        {
+          "audible_backchannels": 1,
+          "backchannel_count": 1,
+          "backchannel_latencies_ms": [
+            80.239
+          ],
+          "backchannel_latency_p50_ms": 80.239,
+          "backchannel_latency_p95_ms": 80.239,
+          "backchannel_latency_samples": 1,
+          "backchannel_latency_stdev_ms": null,
+          "backchannels_per_long_turn": 1.0,
+          "cancelled_backchannels": 1,
+          "collision_events": 0,
+          "delayed_responses": 0,
+          "end_of_turn_risks": 0,
+          "eot_delay_p50_ms": 288.876,
+          "eot_delays_ms": [
+            577.752,
+            0.0
+          ],
+          "final_transcripts": 3,
+          "interim_transcripts": 9,
+          "jev_decision_latencies_ms": [
+            1201.779
+          ],
+          "jev_decision_latency_p50_ms": 1201.779,
+          "jev_decision_latency_p95_ms": 1201.779,
+          "jev_errors": 0,
+          "jev_timeouts": 0,
+          "llm_ttft_ms": [
+            413.803,
+            156.52,
+            459.775
+          ],
+          "llm_ttft_p50_ms": 413.803,
+          "llm_ttft_p95_ms": 455.178,
+          "long_user_turns": 1,
+          "mode": "jev_backchannel",
+          "overlapping_backchannels": 1,
+          "response_delta_p50_ms": null,
+          "response_delta_p95_ms": null,
+          "response_latencies_ms": [
+            3647.33
+          ],
+          "response_max_ms": 3647.33,
+          "response_min_ms": 3647.33,
+          "response_p50_ms": 3647.33,
+          "response_p95_ms": 3647.33,
+          "response_samples": 1,
+          "response_stdev_ms": null,
+          "run_id": "middle_pause-jev_backchannel-01-b80820",
+          "scenario_id": "middle_pause",
+          "stt_audio_duration_ms": [
+            5300.0,
+            2600.0,
+            4950.0
+          ],
+          "stt_audio_duration_p50_ms": 4950.0,
+          "stt_duration_ms": [],
+          "stt_duration_p50_ms": null,
+          "tts_ttfb_ms": [
+            -1000.0,
+            850.392
+          ],
+          "tts_ttfb_p50_ms": -74.804,
+          "tts_ttfb_p95_ms": 757.872,
+          "unpaired_turns": 0
+        },
+        {
+          "audible_backchannels": 1,
+          "backchannel_count": 1,
+          "backchannel_latencies_ms": [
+            18.49
+          ],
+          "backchannel_latency_p50_ms": 18.49,
+          "backchannel_latency_p95_ms": 18.49,
+          "backchannel_latency_samples": 1,
+          "backchannel_latency_stdev_ms": null,
+          "backchannels_per_long_turn": 1.0,
+          "cancelled_backchannels": 0,
+          "collision_events": 0,
+          "delayed_responses": 0,
+          "end_of_turn_risks": 0,
+          "eot_delay_p50_ms": 288.602,
+          "eot_delays_ms": [
+            577.204,
+            0.0
+          ],
+          "final_transcripts": 4,
+          "interim_transcripts": 7,
+          "jev_decision_latencies_ms": [
+            978.605
+          ],
+          "jev_decision_latency_p50_ms": 978.605,
+          "jev_decision_latency_p95_ms": 978.605,
+          "jev_errors": 0,
+          "jev_timeouts": 0,
+          "llm_ttft_ms": [
+            453.061,
+            322.053,
+            512.996,
+            449.459
+          ],
+          "llm_ttft_p50_ms": 451.26,
+          "llm_ttft_p95_ms": 504.006,
+          "long_user_turns": 1,
+          "mode": "jev_backchannel",
+          "overlapping_backchannels": 1,
+          "response_delta_p50_ms": null,
+          "response_delta_p95_ms": null,
+          "response_latencies_ms": [
+            3492.181
+          ],
+          "response_max_ms": 3492.181,
+          "response_min_ms": 3492.181,
+          "response_p50_ms": 3492.181,
+          "response_p95_ms": 3492.181,
+          "response_samples": 1,
+          "response_stdev_ms": null,
+          "run_id": "middle_pause-jev_backchannel-02-b02a5f",
+          "scenario_id": "middle_pause",
+          "stt_audio_duration_ms": [
+            5350.0,
+            2600.0,
+            3950.0,
+            1200.0
+          ],
+          "stt_audio_duration_p50_ms": 3275.0,
+          "stt_duration_ms": [],
+          "stt_duration_p50_ms": null,
+          "tts_ttfb_ms": [
+            -1000.0,
+            847.489
+          ],
+          "tts_ttfb_p50_ms": -76.255,
+          "tts_ttfb_p95_ms": 755.115,
+          "unpaired_turns": 0
+        },
+        {
+          "audible_backchannels": 2,
+          "backchannel_count": 2,
+          "backchannel_latencies_ms": [
+            19.526,
+            2.222
+          ],
+          "backchannel_latency_p50_ms": 10.874,
+          "backchannel_latency_p95_ms": 18.661,
+          "backchannel_latency_samples": 2,
+          "backchannel_latency_stdev_ms": 8.652,
+          "backchannels_per_long_turn": 1.0,
+          "cancelled_backchannels": 1,
+          "collision_events": 0,
+          "delayed_responses": 0,
+          "end_of_turn_risks": 0,
+          "eot_delay_p50_ms": 289.708,
+          "eot_delays_ms": [
+            579.416,
+            0.0
+          ],
+          "final_transcripts": 3,
+          "interim_transcripts": 8,
+          "jev_decision_latencies_ms": [
+            868.495,
+            1415.705
+          ],
+          "jev_decision_latency_p50_ms": 1142.1,
+          "jev_decision_latency_p95_ms": 1388.344,
+          "jev_errors": 0,
+          "jev_timeouts": 0,
+          "llm_ttft_ms": [
+            289.179,
+            161.26,
+            430.32
+          ],
+          "llm_ttft_p50_ms": 289.179,
+          "llm_ttft_p95_ms": 416.206,
+          "long_user_turns": 2,
+          "mode": "jev_backchannel",
+          "overlapping_backchannels": 2,
+          "response_delta_p50_ms": null,
+          "response_delta_p95_ms": null,
+          "response_latencies_ms": [
+            3004.74
+          ],
+          "response_max_ms": 3004.74,
+          "response_min_ms": 3004.74,
+          "response_p50_ms": 3004.74,
+          "response_p95_ms": 3004.74,
+          "response_samples": 1,
+          "response_stdev_ms": null,
+          "run_id": "middle_pause-jev_backchannel-03-16f8e1",
+          "scenario_id": "middle_pause",
+          "stt_audio_duration_ms": [
+            5300.0,
+            2600.0,
+            5100.0
+          ],
+          "stt_audio_duration_p50_ms": 5100.0,
+          "stt_duration_ms": [],
+          "stt_duration_p50_ms": null,
+          "tts_ttfb_ms": [
+            -1000.0,
+            859.245
+          ],
+          "tts_ttfb_p50_ms": -70.378,
+          "tts_ttfb_p95_ms": 766.283,
+          "unpaired_turns": 1
         }
       ],
       "scenario_id": "middle_pause"
@@ -3920,37 +4560,49 @@
           "unpaired_turns": 0
         },
         "jev_backchannel": {
-          "audible_backchannels": 2,
-          "backchannel_count": 2,
+          "audible_backchannels": 5,
+          "backchannel_count": 5,
           "backchannel_latencies_ms": [
             22.962,
-            28.208
+            28.208,
+            23.947,
+            20.852,
+            60.115
           ],
-          "backchannel_latency_p50_ms": 25.585,
-          "backchannel_latency_p95_ms": 27.946,
-          "backchannel_latency_samples": 2,
-          "backchannel_latency_stdev_ms": 2.623,
+          "backchannel_latency_p50_ms": 23.947,
+          "backchannel_latency_p95_ms": 53.734,
+          "backchannel_latency_samples": 5,
+          "backchannel_latency_stdev_ms": 14.646,
           "backchannels_per_long_turn": 1.0,
           "cancelled_backchannels": 0,
           "collision_events": 0,
           "delayed_responses": 0,
           "end_of_turn_risks": 0,
-          "eot_delay_p50_ms": 289.378,
+          "eot_delay_p50_ms": 288.841,
           "eot_delays_ms": [
             578.756,
             0.0,
             580.084,
+            0.0,
+            620.445,
+            0.0,
+            577.681,
+            0.0,
+            578.013,
             0.0
           ],
-          "final_transcripts": 5,
-          "interim_transcripts": 12,
+          "final_transcripts": 14,
+          "interim_transcripts": 32,
           "jev_decision_latencies_ms": [
             1113.845,
             1506.926,
-            580.165
+            580.165,
+            1035.701,
+            878.253,
+            900.736
           ],
-          "jev_decision_latency_p50_ms": 1113.845,
-          "jev_decision_latency_p95_ms": 1467.618,
+          "jev_decision_latency_p50_ms": 968.218,
+          "jev_decision_latency_p95_ms": 1408.656,
           "jev_errors": 0,
           "jev_timeouts": 0,
           "llm_ttft_ms": [
@@ -3958,25 +4610,37 @@
             559.903,
             531.355,
             484.775,
-            518.5
+            518.5,
+            125.793,
+            604.898,
+            499.976,
+            120.964,
+            152.306,
+            464.91,
+            119.475,
+            420.911,
+            611.484
           ],
-          "llm_ttft_p50_ms": 518.5,
-          "llm_ttft_p95_ms": 554.193,
-          "long_user_turns": 2,
+          "llm_ttft_p50_ms": 474.842,
+          "llm_ttft_p95_ms": 607.203,
+          "long_user_turns": 5,
           "mode": "jev_backchannel",
-          "overlapping_backchannels": 2,
-          "response_delta_p50_ms": -188.421,
-          "response_delta_p95_ms": -2481.621,
+          "overlapping_backchannels": 5,
+          "response_delta_p50_ms": -64.858,
+          "response_delta_p95_ms": -2103.499,
           "response_latencies_ms": [
             4091.76,
-            3370.439
+            3370.439,
+            4519.33,
+            3854.663,
+            3168.698
           ],
-          "response_max_ms": 4091.76,
-          "response_min_ms": 3370.439,
-          "response_p50_ms": 3731.1,
-          "response_p95_ms": 4055.694,
-          "response_samples": 2,
-          "response_stdev_ms": 360.661,
+          "response_max_ms": 4519.33,
+          "response_min_ms": 3168.698,
+          "response_p50_ms": 3854.663,
+          "response_p95_ms": 4433.816,
+          "response_samples": 5,
+          "response_stdev_ms": 487.567,
           "run_id": "aggregate",
           "scenario_id": "all",
           "stt_audio_duration_ms": [
@@ -3984,19 +4648,34 @@
             3700.0,
             1850.0,
             9000.0,
-            3150.0
+            3150.0,
+            5350.0,
+            3850.0,
+            1950.0,
+            5300.0,
+            3500.0,
+            2050.0,
+            5300.0,
+            2850.0,
+            2950.0
           ],
-          "stt_audio_duration_p50_ms": 3700.0,
+          "stt_audio_duration_p50_ms": 3600.0,
           "stt_duration_ms": [],
           "stt_duration_p50_ms": null,
           "tts_ttfb_ms": [
             -1000.0,
             965.878,
             -1000.0,
-            875.292
+            875.292,
+            -1000.0,
+            1585.548,
+            -1000.0,
+            977.976,
+            -1000.0,
+            831.675
           ],
-          "tts_ttfb_p50_ms": -62.354,
-          "tts_ttfb_p95_ms": 952.29,
+          "tts_ttfb_p50_ms": -84.163,
+          "tts_ttfb_p95_ms": 1312.141,
           "unpaired_turns": 0
         }
       },
@@ -4525,6 +5204,210 @@
           ],
           "tts_ttfb_p50_ms": -62.354,
           "tts_ttfb_p95_ms": 781.527,
+          "unpaired_turns": 0
+        },
+        {
+          "audible_backchannels": 1,
+          "backchannel_count": 1,
+          "backchannel_latencies_ms": [
+            23.947
+          ],
+          "backchannel_latency_p50_ms": 23.947,
+          "backchannel_latency_p95_ms": 23.947,
+          "backchannel_latency_samples": 1,
+          "backchannel_latency_stdev_ms": null,
+          "backchannels_per_long_turn": 1.0,
+          "cancelled_backchannels": 0,
+          "collision_events": 0,
+          "delayed_responses": 0,
+          "end_of_turn_risks": 0,
+          "eot_delay_p50_ms": 310.223,
+          "eot_delays_ms": [
+            620.445,
+            0.0
+          ],
+          "final_transcripts": 3,
+          "interim_transcripts": 6,
+          "jev_decision_latencies_ms": [
+            1035.701
+          ],
+          "jev_decision_latency_p50_ms": 1035.701,
+          "jev_decision_latency_p95_ms": 1035.701,
+          "jev_errors": 0,
+          "jev_timeouts": 0,
+          "llm_ttft_ms": [
+            125.793,
+            604.898,
+            499.976
+          ],
+          "llm_ttft_p50_ms": 499.976,
+          "llm_ttft_p95_ms": 594.406,
+          "long_user_turns": 1,
+          "mode": "jev_backchannel",
+          "overlapping_backchannels": 1,
+          "response_delta_p50_ms": null,
+          "response_delta_p95_ms": null,
+          "response_latencies_ms": [
+            4519.33
+          ],
+          "response_max_ms": 4519.33,
+          "response_min_ms": 4519.33,
+          "response_p50_ms": 4519.33,
+          "response_p95_ms": 4519.33,
+          "response_samples": 1,
+          "response_stdev_ms": null,
+          "run_id": "fast_speaker-jev_backchannel-01-9c6e89",
+          "scenario_id": "fast_speaker",
+          "stt_audio_duration_ms": [
+            5350.0,
+            3850.0,
+            1950.0
+          ],
+          "stt_audio_duration_p50_ms": 3850.0,
+          "stt_duration_ms": [],
+          "stt_duration_p50_ms": null,
+          "tts_ttfb_ms": [
+            -1000.0,
+            1585.548
+          ],
+          "tts_ttfb_p50_ms": 292.774,
+          "tts_ttfb_p95_ms": 1456.271,
+          "unpaired_turns": 0
+        },
+        {
+          "audible_backchannels": 1,
+          "backchannel_count": 1,
+          "backchannel_latencies_ms": [
+            20.852
+          ],
+          "backchannel_latency_p50_ms": 20.852,
+          "backchannel_latency_p95_ms": 20.852,
+          "backchannel_latency_samples": 1,
+          "backchannel_latency_stdev_ms": null,
+          "backchannels_per_long_turn": 1.0,
+          "cancelled_backchannels": 0,
+          "collision_events": 0,
+          "delayed_responses": 0,
+          "end_of_turn_risks": 0,
+          "eot_delay_p50_ms": 288.841,
+          "eot_delays_ms": [
+            577.681,
+            0.0
+          ],
+          "final_transcripts": 3,
+          "interim_transcripts": 6,
+          "jev_decision_latencies_ms": [
+            878.253
+          ],
+          "jev_decision_latency_p50_ms": 878.253,
+          "jev_decision_latency_p95_ms": 878.253,
+          "jev_errors": 0,
+          "jev_timeouts": 0,
+          "llm_ttft_ms": [
+            120.964,
+            152.306,
+            464.91
+          ],
+          "llm_ttft_p50_ms": 152.306,
+          "llm_ttft_p95_ms": 433.65,
+          "long_user_turns": 1,
+          "mode": "jev_backchannel",
+          "overlapping_backchannels": 1,
+          "response_delta_p50_ms": null,
+          "response_delta_p95_ms": null,
+          "response_latencies_ms": [
+            3854.663
+          ],
+          "response_max_ms": 3854.663,
+          "response_min_ms": 3854.663,
+          "response_p50_ms": 3854.663,
+          "response_p95_ms": 3854.663,
+          "response_samples": 1,
+          "response_stdev_ms": null,
+          "run_id": "fast_speaker-jev_backchannel-02-68c410",
+          "scenario_id": "fast_speaker",
+          "stt_audio_duration_ms": [
+            5300.0,
+            3500.0,
+            2050.0
+          ],
+          "stt_audio_duration_p50_ms": 3500.0,
+          "stt_duration_ms": [],
+          "stt_duration_p50_ms": null,
+          "tts_ttfb_ms": [
+            -1000.0,
+            977.976
+          ],
+          "tts_ttfb_p50_ms": -11.012,
+          "tts_ttfb_p95_ms": 879.077,
+          "unpaired_turns": 0
+        },
+        {
+          "audible_backchannels": 1,
+          "backchannel_count": 1,
+          "backchannel_latencies_ms": [
+            60.115
+          ],
+          "backchannel_latency_p50_ms": 60.115,
+          "backchannel_latency_p95_ms": 60.115,
+          "backchannel_latency_samples": 1,
+          "backchannel_latency_stdev_ms": null,
+          "backchannels_per_long_turn": 1.0,
+          "cancelled_backchannels": 0,
+          "collision_events": 0,
+          "delayed_responses": 0,
+          "end_of_turn_risks": 0,
+          "eot_delay_p50_ms": 289.007,
+          "eot_delays_ms": [
+            578.013,
+            0.0
+          ],
+          "final_transcripts": 3,
+          "interim_transcripts": 8,
+          "jev_decision_latencies_ms": [
+            900.736
+          ],
+          "jev_decision_latency_p50_ms": 900.736,
+          "jev_decision_latency_p95_ms": 900.736,
+          "jev_errors": 0,
+          "jev_timeouts": 0,
+          "llm_ttft_ms": [
+            119.475,
+            420.911,
+            611.484
+          ],
+          "llm_ttft_p50_ms": 420.911,
+          "llm_ttft_p95_ms": 592.427,
+          "long_user_turns": 1,
+          "mode": "jev_backchannel",
+          "overlapping_backchannels": 1,
+          "response_delta_p50_ms": null,
+          "response_delta_p95_ms": null,
+          "response_latencies_ms": [
+            3168.698
+          ],
+          "response_max_ms": 3168.698,
+          "response_min_ms": 3168.698,
+          "response_p50_ms": 3168.698,
+          "response_p95_ms": 3168.698,
+          "response_samples": 1,
+          "response_stdev_ms": null,
+          "run_id": "fast_speaker-jev_backchannel-03-e93f48",
+          "scenario_id": "fast_speaker",
+          "stt_audio_duration_ms": [
+            5300.0,
+            2850.0,
+            2950.0
+          ],
+          "stt_audio_duration_p50_ms": 2950.0,
+          "stt_duration_ms": [],
+          "stt_duration_p50_ms": null,
+          "tts_ttfb_ms": [
+            -1000.0,
+            831.675
+          ],
+          "tts_ttfb_p50_ms": -84.163,
+          "tts_ttfb_p95_ms": 740.091,
           "unpaired_turns": 0
         }
       ],
@@ -6495,39 +7378,59 @@
           "collision_events": 0,
           "delayed_responses": 0,
           "end_of_turn_risks": 0,
-          "eot_delay_p50_ms": null,
-          "eot_delays_ms": [],
-          "final_transcripts": 0,
-          "interim_transcripts": 0,
+          "eot_delay_p50_ms": 872.501,
+          "eot_delays_ms": [
+            873.214,
+            872.501,
+            861.471
+          ],
+          "final_transcripts": 3,
+          "interim_transcripts": 6,
           "jev_decision_latencies_ms": [],
           "jev_decision_latency_p50_ms": null,
           "jev_decision_latency_p95_ms": null,
           "jev_errors": 0,
           "jev_timeouts": 0,
-          "llm_ttft_ms": [],
-          "llm_ttft_p50_ms": null,
-          "llm_ttft_p95_ms": null,
+          "llm_ttft_ms": [
+            145.179,
+            156.067,
+            141.381
+          ],
+          "llm_ttft_p50_ms": 145.179,
+          "llm_ttft_p95_ms": 154.978,
           "long_user_turns": 0,
-          "mode": "baseline",
+          "mode": "backchannel",
           "overlapping_backchannels": 0,
-          "response_delta_p50_ms": null,
-          "response_delta_p95_ms": null,
-          "response_latencies_ms": [],
-          "response_max_ms": null,
-          "response_min_ms": null,
-          "response_p50_ms": null,
-          "response_p95_ms": null,
-          "response_samples": 0,
-          "response_stdev_ms": null,
+          "response_delta_p50_ms": 156.438,
+          "response_delta_p95_ms": 1400.556,
+          "response_latencies_ms": [
+            1509.699,
+            1402.989,
+            2985.339
+          ],
+          "response_max_ms": 2985.339,
+          "response_min_ms": 1402.989,
+          "response_p50_ms": 1509.699,
+          "response_p95_ms": 2837.775,
+          "response_samples": 3,
+          "response_stdev_ms": 722.09,
           "run_id": "aggregate",
           "scenario_id": "all",
-          "stt_audio_duration_ms": [],
-          "stt_audio_duration_p50_ms": null,
+          "stt_audio_duration_ms": [
+            4800.0,
+            4800.0,
+            4900.0
+          ],
+          "stt_audio_duration_p50_ms": 4800.0,
           "stt_duration_ms": [],
           "stt_duration_p50_ms": null,
-          "tts_ttfb_ms": [],
-          "tts_ttfb_p50_ms": null,
-          "tts_ttfb_p95_ms": null,
+          "tts_ttfb_ms": [
+            1010.885,
+            893.849,
+            2513.387
+          ],
+          "tts_ttfb_p50_ms": 1010.885,
+          "tts_ttfb_p95_ms": 2363.137,
           "unpaired_turns": 0
         },
         "baseline": {
@@ -7015,6 +7918,180 @@
           ],
           "tts_ttfb_p50_ms": 892.235,
           "tts_ttfb_p95_ms": 892.235,
+          "unpaired_turns": 0
+        },
+        {
+          "audible_backchannels": 0,
+          "backchannel_count": 0,
+          "backchannel_latencies_ms": [],
+          "backchannel_latency_p50_ms": null,
+          "backchannel_latency_p95_ms": null,
+          "backchannel_latency_samples": 0,
+          "backchannel_latency_stdev_ms": null,
+          "backchannels_per_long_turn": null,
+          "cancelled_backchannels": 0,
+          "collision_events": 0,
+          "delayed_responses": 0,
+          "end_of_turn_risks": 0,
+          "eot_delay_p50_ms": 873.214,
+          "eot_delays_ms": [
+            873.214
+          ],
+          "final_transcripts": 1,
+          "interim_transcripts": 2,
+          "jev_decision_latencies_ms": [],
+          "jev_decision_latency_p50_ms": null,
+          "jev_decision_latency_p95_ms": null,
+          "jev_errors": 0,
+          "jev_timeouts": 0,
+          "llm_ttft_ms": [
+            145.179
+          ],
+          "llm_ttft_p50_ms": 145.179,
+          "llm_ttft_p95_ms": 145.179,
+          "long_user_turns": 0,
+          "mode": "backchannel",
+          "overlapping_backchannels": 0,
+          "response_delta_p50_ms": null,
+          "response_delta_p95_ms": null,
+          "response_latencies_ms": [
+            1509.699
+          ],
+          "response_max_ms": 1509.699,
+          "response_min_ms": 1509.699,
+          "response_p50_ms": 1509.699,
+          "response_p95_ms": 1509.699,
+          "response_samples": 1,
+          "response_stdev_ms": null,
+          "run_id": "stop_before_ack-backchannel-01-725eca",
+          "scenario_id": "stop_before_ack",
+          "stt_audio_duration_ms": [
+            4800.0
+          ],
+          "stt_audio_duration_p50_ms": 4800.0,
+          "stt_duration_ms": [],
+          "stt_duration_p50_ms": null,
+          "tts_ttfb_ms": [
+            1010.885
+          ],
+          "tts_ttfb_p50_ms": 1010.885,
+          "tts_ttfb_p95_ms": 1010.885,
+          "unpaired_turns": 0
+        },
+        {
+          "audible_backchannels": 0,
+          "backchannel_count": 0,
+          "backchannel_latencies_ms": [],
+          "backchannel_latency_p50_ms": null,
+          "backchannel_latency_p95_ms": null,
+          "backchannel_latency_samples": 0,
+          "backchannel_latency_stdev_ms": null,
+          "backchannels_per_long_turn": null,
+          "cancelled_backchannels": 0,
+          "collision_events": 0,
+          "delayed_responses": 0,
+          "end_of_turn_risks": 0,
+          "eot_delay_p50_ms": 872.501,
+          "eot_delays_ms": [
+            872.501
+          ],
+          "final_transcripts": 1,
+          "interim_transcripts": 2,
+          "jev_decision_latencies_ms": [],
+          "jev_decision_latency_p50_ms": null,
+          "jev_decision_latency_p95_ms": null,
+          "jev_errors": 0,
+          "jev_timeouts": 0,
+          "llm_ttft_ms": [
+            156.067
+          ],
+          "llm_ttft_p50_ms": 156.067,
+          "llm_ttft_p95_ms": 156.067,
+          "long_user_turns": 0,
+          "mode": "backchannel",
+          "overlapping_backchannels": 0,
+          "response_delta_p50_ms": null,
+          "response_delta_p95_ms": null,
+          "response_latencies_ms": [
+            1402.989
+          ],
+          "response_max_ms": 1402.989,
+          "response_min_ms": 1402.989,
+          "response_p50_ms": 1402.989,
+          "response_p95_ms": 1402.989,
+          "response_samples": 1,
+          "response_stdev_ms": null,
+          "run_id": "stop_before_ack-backchannel-02-bc70a8",
+          "scenario_id": "stop_before_ack",
+          "stt_audio_duration_ms": [
+            4800.0
+          ],
+          "stt_audio_duration_p50_ms": 4800.0,
+          "stt_duration_ms": [],
+          "stt_duration_p50_ms": null,
+          "tts_ttfb_ms": [
+            893.849
+          ],
+          "tts_ttfb_p50_ms": 893.849,
+          "tts_ttfb_p95_ms": 893.849,
+          "unpaired_turns": 0
+        },
+        {
+          "audible_backchannels": 0,
+          "backchannel_count": 0,
+          "backchannel_latencies_ms": [],
+          "backchannel_latency_p50_ms": null,
+          "backchannel_latency_p95_ms": null,
+          "backchannel_latency_samples": 0,
+          "backchannel_latency_stdev_ms": null,
+          "backchannels_per_long_turn": null,
+          "cancelled_backchannels": 0,
+          "collision_events": 0,
+          "delayed_responses": 0,
+          "end_of_turn_risks": 0,
+          "eot_delay_p50_ms": 861.471,
+          "eot_delays_ms": [
+            861.471
+          ],
+          "final_transcripts": 1,
+          "interim_transcripts": 2,
+          "jev_decision_latencies_ms": [],
+          "jev_decision_latency_p50_ms": null,
+          "jev_decision_latency_p95_ms": null,
+          "jev_errors": 0,
+          "jev_timeouts": 0,
+          "llm_ttft_ms": [
+            141.381
+          ],
+          "llm_ttft_p50_ms": 141.381,
+          "llm_ttft_p95_ms": 141.381,
+          "long_user_turns": 0,
+          "mode": "backchannel",
+          "overlapping_backchannels": 0,
+          "response_delta_p50_ms": null,
+          "response_delta_p95_ms": null,
+          "response_latencies_ms": [
+            2985.339
+          ],
+          "response_max_ms": 2985.339,
+          "response_min_ms": 2985.339,
+          "response_p50_ms": 2985.339,
+          "response_p95_ms": 2985.339,
+          "response_samples": 1,
+          "response_stdev_ms": null,
+          "run_id": "stop_before_ack-backchannel-03-9f91ff",
+          "scenario_id": "stop_before_ack",
+          "stt_audio_duration_ms": [
+            4900.0
+          ],
+          "stt_audio_duration_p50_ms": 4900.0,
+          "stt_duration_ms": [],
+          "stt_duration_p50_ms": null,
+          "tts_ttfb_ms": [
+            2513.387
+          ],
+          "tts_ttfb_p50_ms": 2513.387,
+          "tts_ttfb_p95_ms": 2513.387,
           "unpaired_turns": 0
         }
       ],

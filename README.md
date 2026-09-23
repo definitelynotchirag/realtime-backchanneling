@@ -9,9 +9,12 @@ offline policy replay, the comparison table, and the visual run timeline.
 
 - Python 3.12 project managed with `uv`.
 - LiveKit Agents `1.8.2` with public `AgentServer`, `AgentSession`, and `RoomOptions` APIs.
-- Streaming LiveKit Gemini Transcribe STT -> Gemini Flash LLM -> LiveKit Inference TTS
-  providers by default. LiveKit Inference emits interim transcripts for turn-taking
-  experiments; Groq remains available as a final-segment STT fallback.
+- Streaming speech-to-text -> LLM -> streaming speech providers, chosen by environment
+  variable rather than by code path. The shipped default is LiveKit Inference (Gemini
+  Transcribe, Gemini Flash, LiveKit TTS); **the measurements in this README were taken on
+  the Deepgram stack** (`STT_PROVIDER=deepgram`, `LLM_PROVIDER=groq`,
+  `TTS_PROVIDER=deepgram_tts`), and every run records which stack produced it, so a number
+  can never be read against the wrong pipeline.
 - Optional OpenRouter model failover and direct ElevenLabs TTS.
 - Silero voice activity detection.
 - JSONL lifecycle events for speech boundaries, transcript metadata, EOT signals,
@@ -30,12 +33,14 @@ offline policy replay, the comparison table, and the visual run timeline.
 - A scripted scenario driver (`blue-machines-scenario`) that renders each scenario's
   utterance once, then drives every (scenario, mode, repeat) through real LiveKit rooms
   with real audio - no human at the microphone, and no dependence on speaking twice.
-- Provider options for environments where LiveKit Inference is unavailable: native Groq
-  for all three roles (`STT_PROVIDER=groq_interim`, `LLM_PROVIDER=groq`,
-  `TTS_PROVIDER=groq_tts`),
-  a direct Gemini TTS adapter (`TTS_PROVIDER=gemini_tts`). Groq's speech model additionally
-  requires a one-time terms acceptance in their console; the API returns
-  `model_terms_required` until then, with the acceptance link in the error.
+- Provider options for environments where LiveKit Inference is unavailable or rate
+  limited: Deepgram live STT and Aura-2 speech (`STT_PROVIDER=deepgram`,
+  `TTS_PROVIDER=deepgram_tts`), the OpenRouter-hosted Deepgram voice
+  (`TTS_PROVIDER=openrouter_tts`), native Groq for all three roles
+  (`STT_PROVIDER=groq_interim`, `LLM_PROVIDER=groq`, `TTS_PROVIDER=groq_tts`), and a direct
+  Gemini TTS adapter (`TTS_PROVIDER=gemini_tts`). Groq's speech model additionally requires
+  a one-time terms acceptance in their console; the API returns `model_terms_required`
+  until then, with the acceptance link in the error.
 - A real end-of-turn probability for the policy, from LiveKit's public streaming turn
   detector running on the user's audio, with an automatic final-transcript fallback. Each
   `eot_prediction` event names the model that answered (`turn-detector-v1-mini` locally,
@@ -399,33 +404,60 @@ scripted sweep on the **streaming stack**: Deepgram `nova-3` streaming STT, Groq
 Every scenario runs in all three modes, three repeats each, in real rooms - and each run
 records the stack it used, so the table cannot mix providers.
 
-| Metric | Baseline | Timer backchannel | Delta |
+<!-- results:start -->
+Measured over **80 runs** across 8 scenarios and three modes - baseline, timer backchannel, Jev backchannel - three repeats each (a cell is re-run when a run is lost), in real rooms:
+
+| Metric | Baseline | Timer backchannel | Jev |
 |---|---|---|---|
-| Response P50 | 1276 ms *(n=13)* | 781 ms *(n=12)* | −495 ms |
-| Response P95 | 4407 ms | 1949 ms | −2458 ms |
-| Response σ | 1582 ms | 628 ms | −954 ms |
-| Audible cues | **0** | **11** | +11 |
-| Cues per long turn | 0.00 | **0.89** | +0.89 |
-| Backchannel decision → audible | — | **1.5 ms** | — |
-| LLM TTFT P50 | 468 ms | 471 ms | +3 ms |
-| TTS TTFB P50 | 220 ms | 214 ms | −5 ms |
+| Response floor (min) | 1,008 ms | 1,121 ms | 1,209 ms |
+| Response P50 | 1,802 ms *(n=24)* | 3,364 ms *(n=24)* | 3,087 ms *(n=32)* |
+| Response P95 | 7,979 ms | 7,724 ms | 6,518 ms |
+| Response σ | 2,443 ms | 2,043 ms | 1,551 ms |
+| Audible cues | 0 | 19 | 28 |
+| Cues per long turn | 0 | 1 | 1.08 |
+| Decision → audible | — | 19 ms | 21 ms |
+| EOT delay P50 | 577 ms | 578 ms | 577 ms |
+| LLM TTFT P50 | 427 ms | 341 ms | 430 ms |
+| Speech TTFB P50 | 901 ms | 914 ms | 870 ms |
 | Delayed responses | 0 | 0 | 0 |
 | End-of-turn collisions | 0 | 0 | 0 |
-| Cancelled cues | 0 | 1 | +1 |
+| Cancelled cues | 0 | 0 | 3 |
+| Unpaired turns | 4 | 4 | 6 |
+<!-- results:end -->
 
-**Did backchanneling make the agent slower? No.** The provider pipeline is measurably the
-same in both arms (LLM TTFT and TTS TTFB within 5 ms), the backchannel arm is 495 ms faster
-at P50 and 2.5 s faster at P95, and the counters that would reveal damage — delayed
-responses, collisions — are zero in both. The 781 ms P50 is the real answer latency of the
-Groq stack; the earlier 4.6 s figure was a quota-blocked speech provider, not the policy.
+**Did backchanneling make the agent slower? Not through the pipeline.** The stage the policy
+could touch is the turn handoff, and it is identical in every arm: the turn the user ended is
+committed within a few milliseconds of the end-of-utterance metric (P50 577 ms of detector
+delay in all three arms, the metric landing 5 ms later), and the providers behind it are the
+same to within noise (LLM TTFT 427/341/430 ms, speech TTFB 901/914/870 ms). The fastest answer
+in each arm is also within 200 ms of the others - 1,008 / 1,121 / 1,209 ms - so a cue does not
+add to the floor.
 
-Limits of this sweep, stated plainly: one worker drives one room at a time, so the runs are
-sequential and `n` per arm is the number of scripted repeats, not a production sample — a P50
-with a reported σ, and a P95 that should be read as an indicator rather than a bound. Every
-run is a real room with real STT, LLM and speech calls, so a sweep costs provider usage, and
-the driver stops after four consecutive unanswered runs instead of recording a provider
-outage as data. Scripted runs skip the greeting (`--greet` re-enables it) to keep each sweep
-cheap.
+What the aggregate P50 column does **not** show is a policy effect either way, and reading it
+as one would be a mistake. Response latency in these rooms is provider-dominated: a quarter to
+a third of turns exceed 4 s in *every* arm, and the per-scenario breakdown swings in both
+directions (on `noisy_audio` the cue arms are faster, 3.3-3.9 s against 4.2-6.8 s; on
+`long_monologue` the timer arm is slower, 6.9-7.9 s against 1.7-3.7 s). With three repeats per
+scenario and arm, that variance decides the P50, which is why the earlier 495 ms "faster at
+P50" claim from the previous stack is not carried over here: what this sweep can support is
+that the policy is not on the critical path, not a sub-second claim in either direction. More
+repeats, or a latency-stable provider, is what a tighter claim would need.
+
+The cue path itself is clean in this sweep: 19 timer cues and 28 Jev cues became audible, each
+19-21 ms after the decision, with 0 collisions, 0 delayed responses and 3 cancelled cues (Jev
+cues still audible when the user took the floor).
+
+Limits of this sweep, stated plainly: one worker drives one room at a time, so runs are
+sequential and `n` per arm is the number of scripted repeats, not a production sample. Six
+recorded runs were excluded because they produced no answer at all - the driver used to end a
+run when any agent audio went quiet, and a cue is agent audio, so it disconnected while the
+model was still generating; that is fixed and the three `stop_before_ack` repeats it killed now
+answer. The driver also reports "produced agent audio" and "answered" separately, because
+reading the first as the second is how that hid. Jev's classifier occasionally exceeds its 4 s
+deadline (the decision is about a partial transcript, so a late answer is worthless) and fails
+closed, which costs a cue rather than producing a late one. Every run is a real room with real
+STT, LLM and speech calls, and scripted runs skip the greeting (`--greet` re-enables it) to
+keep a sweep cheap.
 
 **Speech synthesis is the latency floor.** With the streaming reader above, the wait
 before the agent's first audible word is the provider's own time-to-first-audio: measured
@@ -482,9 +514,11 @@ uv run python -m compileall -q src tests
 uv run python -c "import blue_machines_baseline.agent; import blue_machines_baseline.api"
 ```
 
-These checks run without provider credentials (102 tests). A real room conversation needs
-valid LiveKit, an LLM key, and a speech provider: LiveKit Inference, ElevenLabs, native Groq
-speech (after a one-time terms acceptance), or the direct Gemini TTS adapter. Jev mode additionally needs `TYPESAFE_API_KEY`
-and a streaming STT with interim results; Groq's STT is batch-only, so Jev mode is rejected
-with a clear error when it is selected with that provider. The replay runner, analyzer, API
-report, and browser build remain usable without any provider service.
+These checks run without provider credentials (143 tests). A real room conversation needs
+valid LiveKit, an LLM key, and a speech provider: Deepgram speech, the OpenRouter-hosted
+Deepgram voice, native Groq speech (after a one-time terms acceptance), LiveKit Inference,
+ElevenLabs, or the direct Gemini TTS adapter. Jev mode additionally needs `TYPESAFE_API_KEY`
+and a streaming STT with interim results - `STT_PROVIDER=deepgram` or `groq_interim`; plain
+Groq STT is batch-only, so Jev mode is rejected with a clear error when it is selected with
+that provider. The replay runner, analyzer, API report, and browser build remain usable
+without any provider service.

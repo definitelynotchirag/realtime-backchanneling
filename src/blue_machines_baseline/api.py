@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Any, Literal
 from uuid import uuid4
@@ -16,6 +17,7 @@ from pydantic import BaseModel, Field
 from .benchmark import (
     REQUIRED_SCENARIO_IDS,
     SCENARIO_BY_ID,
+    RunSummary,
     build_report,
     load_jsonl,
     report_provenance,
@@ -52,6 +54,20 @@ class ReplayRequest(BaseModel):
     seed: int = 7
 
 
+def _provider_report_path() -> Path:
+    """The committed report built from the sweep's event log.
+
+    It is the reviewed evidence, so it is what the UI shows when it exists: a report
+    rebuilt from the live log answers a different question (everything recorded on
+    this machine, across stacks), and showing that under the same panel made the
+    dashboard disagree with the README.
+    """
+
+    return Path(
+        os.environ.get("BENCHMARK_PROVIDER_REPORT_PATH", "outputs/benchmark-report-provider.json")
+    ).expanduser()
+
+
 def _benchmark_report_path() -> Path:
     return Path(
         os.environ.get("BENCHMARK_REPORT_PATH", "outputs/benchmark-report.json")
@@ -69,6 +85,61 @@ def _add_provenance(report: dict[str, Any]) -> dict[str, Any]:
     return report
 
 
+STACK_FIELDS = ("stt_provider", "llm_provider", "tts_provider")
+
+
+def _current_stack() -> dict[str, str]:
+    """The providers this process believes it is configured with."""
+
+    return {
+        "stt_provider": os.environ.get("STT_PROVIDER", "livekit_inference").strip().lower(),
+        "llm_provider": os.environ.get("LLM_PROVIDER", "gemini").strip().lower(),
+        "tts_provider": os.environ.get("TTS_PROVIDER", "livekit_inference").strip().lower(),
+    }
+
+
+def _run_stacks(records: Sequence[object]) -> dict[str, dict[str, object]]:
+    """The providers each run reported when its agent joined."""
+
+    stacks: dict[str, dict[str, object]] = {}
+    for record in records:
+        if not isinstance(record, dict) or record.get("name") != "session_started":
+            continue
+        run_id = record.get("run_id")
+        data = record.get("data")
+        if isinstance(run_id, str) and isinstance(data, dict):
+            stacks[run_id] = {field: data.get(field) for field in STACK_FIELDS}
+    return stacks
+
+
+def _measured_summaries(records: Sequence[object]) -> list[RunSummary]:
+    """Summaries of runs that were recorded on the stack this process is running.
+
+    A run without a matching stamp is not evidence for this pipeline - it may have
+    been recorded on another provider stack, or before runs carried a stamp at all.
+    Mixing it in is how a table ends up comparing a batch-STT measurement with a
+    streaming one.
+    """
+
+    wanted = _current_stack()
+    stacks = _run_stacks(records)
+    return [
+        summary
+        for summary in summarize_event_log(records)
+        if stacks.get(summary.run_id, {}) == wanted
+    ]
+
+
+def _read_report(path: Path) -> dict[str, Any] | None:
+    if not path.exists():
+        return None
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return None
+    return _add_provenance(value) if isinstance(value, dict) else None
+
+
 def _load_report() -> dict[str, Any]:
     """Return the benchmark report the UI should show.
 
@@ -81,27 +152,22 @@ def _load_report() -> dict[str, Any]:
     """
 
     records = load_jsonl(event_log_path_from_env())
-    actual_summaries = summarize_event_log(records)
-    actual_report = None
-    if any(
-        summary.scenario_id != "unlabelled" and not summary.run_id.startswith("legacy-")
-        for summary in actual_summaries
-    ):
-        actual_report = build_report(
-            actual_summaries,
-            source=f"event-log:{event_log_path_from_env()}",
-        )
-    report_path = _benchmark_report_path()
-    persisted: dict[str, Any] | None = None
-    if report_path.exists():
-        try:
-            value = json.loads(report_path.read_text(encoding="utf-8"))
-        except json.JSONDecodeError:
-            value = None
-        if isinstance(value, dict):
-            persisted = _add_provenance(value)
-    if actual_report is not None:
-        primary = _add_provenance(actual_report)
+    measured = _measured_summaries(records)
+    persisted = _read_report(_benchmark_report_path())
+    committed = _read_report(_provider_report_path())
+
+    primary: dict[str, Any] | None = committed
+    if primary is None:
+        summaries = [
+            summary
+            for summary in measured
+            if summary.scenario_id != "unlabelled" and not summary.run_id.startswith("legacy-")
+        ]
+        if summaries:
+            primary = _add_provenance(
+                build_report(summaries, source=f"event-log:{event_log_path_from_env()}")
+            )
+    if primary is not None:
         if persisted is not None:
             primary["replay_observation"] = persisted
         return primary
@@ -109,7 +175,7 @@ def _load_report() -> dict[str, Any]:
         return persisted
     return _add_provenance(
         build_report(
-            actual_summaries,
+            measured,
             source="unavailable: no benchmark report or labelled provider sessions found",
         )
     )

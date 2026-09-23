@@ -182,10 +182,12 @@ Priority order — the first three are what the assignment actually grades:
 
 ---
 
-## 7. Remediation status — 2026-09-23
+## 7. Remediation status — 2026-09-23, updated 2026-09-24
 
-Every finding above was worked through in the same working tree. Where a fix needed a
-provider stack that this environment could not reach, the substitute is stated explicitly.
+Sections 1-6 are the audit as it was performed; this section records what changed afterwards.
+The suite has grown from the 63 tests the audit collected to **143**, and the measured stack
+changed from the one the audit saw to the streaming one described below, so the numbers in
+section 2-6 are the audit's, not the current state.
 
 | Finding | Status | What changed, and how it was verified |
 |---|---|---|
@@ -204,38 +206,52 @@ provider stack that this environment could not reach, the substitute is stated e
 
 ### What the real runs are, and what they are not
 
-The sweep drives every scenario in **baseline** and **timer backchannel** mode, three
-repeats each, through real LiveKit rooms with real Groq STT, Gemini LLM and Gemini TTS.
-The committed evidence is `outputs/benchmark-events.jsonl` (the scripted runs extracted
-from the worker's log) and the report built from it,
-`outputs/benchmark-report-provider.json` — 35 runs, four scenarios, both arms for three of
-them.
+The sweep drives all eight scenarios in all three modes, three repeats each, through real
+LiveKit rooms on the **streaming stack**: Deepgram `nova-3` live speech-to-text, Groq
+`openai/gpt-oss-120b`, Deepgram Aura-2 speech, LiveKit's streaming turn detector. Every run
+records the providers *and* the spoken instruction it ran with in its `session_started`
+event, and `scripts/extract-benchmark-runs.py` rebuilds the committed evidence from the raw
+log, refusing runs whose stamp does not match the stack on the table. A table therefore
+cannot mix a batch-STT measurement with a streaming one, or a run taken with a different
+prompt.
 
-**Measured outcome (baseline → timer backchannel), now on a single all-Groq stack:**
-response P50 1276 ms → 781 ms (n=13/12, σ 1.58 s → 0.63 s), P95 4407 ms → 1949 ms, audible
-cues 0 → 11, cues per long turn 0.00 → 0.89, cue decision→audible 1.5 ms, LLM TTFT and TTS
-TTFB identical within 5 ms across arms, and **0 delayed responses and 0 collisions in both
-arms** (one cancelled cue). No measurable slowdown, and no turn-taking damage in the sample.
-The UI shows the same numbers.
+**Measured outcome.** `README.md` carries the table, regenerated from the report by
+`scripts/update-readme-results.py` so it cannot drift from the committed evidence. Two
+findings answer the assignment's question:
 
-Three limits are stated rather than hidden:
+1. **The policy is not on the response path.** The turn the user ends is committed within
+   milliseconds of the end-of-utterance metric - P50 577 ms of detector delay, identical in
+   all three arms, with the metric landing 5 ms after the turn boundary - and the providers
+   behind it are the same to within noise (LLM TTFT 427/341/430 ms, speech TTFB
+   901/914/870 ms). The fastest answer in each arm is within 200 ms (1,008 / 1,121 /
+   1,209 ms), so a cue does not raise the floor.
+2. **The cue path is measurable and clean.** 19 timer cues and 28 Jev cues became audible,
+   each 19-21 ms after the decision, with 0 collisions, 0 delayed responses, and 3 cancelled
+   cues (Jev cues still audible when the user took the floor).
 
-1. **The sweep stopped early: the speech provider's daily budget ran out.** Orpheus on the
-   free tier allows 3600 speech tokens/day (~70 short utterances) and the sweep spent it, so
-   `noisy_audio`, `multiple_backchannels` and `stop_before_ack` have no measured runs. n is
-   12-13 per arm — enough for a P50 with a reported σ, not for a trustworthy P95. Scripted
-   runs now skip the greeting to halve the budget per sweep, and the driver aborts after
-   three consecutive silent runs instead of recording provider failures as data.
-2. **Jev mode is not in the sweep, but it runs.** Jev needs interim transcripts, so a new
-   `groq_interim` provider transcribes Groq's batch endpoint on a cadence and emits partial
-   transcripts while the user speaks (verified: seven interims during an 8.8 s utterance).
-   A real Jev run produces the full semantic path - interim transcript, `jev_request_started`,
-   `backchannel_semantic_approved`, `jev_decision {approved: true, confidence: 0.92}`, then a
-   638 ms cue - and a Jev room now also closes each turn with a final transcript and an
-   answered reply (`answered=yes`, response 661 ms), which the first version of that adapter
-   could not do: it only finalized on flush, and the pipeline never flushes per turn.
-   Including Jev in the sweep still needs speech budget for two more arms.
-3. **The TTS used for the sweep is non-streaming**, so the agent cannot start speaking
-   until the whole utterance is synthesised (~2.8 s, measured). That cost lands on both
-   arms equally, which keeps the *comparison* fair while inflating absolute latency. A
-   production deployment would use a streaming provider; the README says so.
+What this sweep does **not** support is a sub-second claim on aggregate P50 in either
+direction. A quarter to a third of turns exceed 4 s in every arm, the per-scenario results
+swing both ways (the cue arms are faster on `noisy_audio`, the timer arm slower on
+`long_monologue`), and three repeats per scenario leave that provider variance in charge of
+the median. The earlier stack's "495 ms faster at P50" is therefore not carried over.
+
+Four limits are stated rather than hidden:
+
+1. **`n` is the number of scripted repeats.** One worker drives one room at a time, so runs
+   are sequential; a P50 with a reported sigma is meaningful, a P95 is an indicator.
+2. **Six recorded runs were excluded because they produced no answer.** The driver ended a
+   run when any agent audio went quiet, and a backchannel cue is agent audio, so it
+   disconnected while the model was still generating - the worker log shows the turn
+   committing and the session closing 0.9 s later. Fixed, and verified: the three
+   `stop_before_ack` repeats it killed now answer. The sweep summary reports "produced agent
+   audio" and "answered" separately, because reading the first as the second is how this
+   stayed hidden.
+3. **The classification deadline is occasionally exceeded** (4 s, under load). It fails
+   closed, so a slow classification costs a cue and never produces a late one; cancelled
+   classifications are reported (`jev_decision_cancelled`) so requests reconcile with
+   decisions instead of vanishing.
+4. **The stack is a consumer subscription, not a production fleet.** Deepgram and Groq were
+   reachable here while LiveKit Inference returned 429 and ElevenLabs 402, which is why the
+   measured stack is the one it is. Nothing in the policy or the instrumentation depends on
+   that choice: each run says which stack produced it, and `--stack` makes another one
+   filterable.
