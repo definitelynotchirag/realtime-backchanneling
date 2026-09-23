@@ -1,0 +1,9 @@
+{
+  "duration_seconds": 21.181,
+  "model": "gemini-2.5-flash-preview-tts",
+  "pause_durations_seconds": [],
+  "scenario_id": "multiple_backchannels",
+  "target_duration_seconds": 20.0,
+  "text": "Let me walk you through the whole thing from the start. We had three services talking to one queue, and the retry policy was copied from an older project that assumed at-least-once delivery, which was not true any more. So whenever a worker died mid-batch the whole batch came back, and the duplicates piled up until the reconciliation job started timing out as well.",
+  "voice": "Kore"
+}

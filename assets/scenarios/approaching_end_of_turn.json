@@ -1,0 +1,11 @@
+{
+  "duration_seconds": 3.541,
+  "model": "gemini-2.5-flash-preview-tts",
+  "pause_durations_seconds": [
+    0.8
+  ],
+  "scenario_id": "approaching_end_of_turn",
+  "target_duration_seconds": 3.5,
+  "text": "Anyway that is basically the whole story for now.",
+  "voice": "Kore"
+}

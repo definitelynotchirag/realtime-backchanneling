@@ -1,0 +1,9 @@
+{
+  "duration_seconds": 6.381,
+  "model": "gemini-2.5-flash-preview-tts",
+  "pause_durations_seconds": [],
+  "scenario_id": "noisy_audio",
+  "target_duration_seconds": 8.0,
+  "text": "Sorry about the background noise here, I am calling from the office floor and the team is demoing something right behind me.",
+  "voice": "Kore"
+}

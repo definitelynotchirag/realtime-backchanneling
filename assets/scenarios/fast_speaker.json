@@ -1,0 +1,9 @@
+{
+  "duration_seconds": 7.461,
+  "model": "gemini-2.5-flash-preview-tts",
+  "pause_durations_seconds": [],
+  "scenario_id": "fast_speaker",
+  "target_duration_seconds": 7.0,
+  "text": "We ran the numbers again and switched the queue and the retries dropped immediately so honestly it was worth the rewrite.",
+  "voice": "Kore"
+}

@@ -1,0 +1,11 @@
+{
+  "duration_seconds": 8.821,
+  "model": "gemini-2.5-flash-preview-tts",
+  "pause_durations_seconds": [
+    0.5
+  ],
+  "scenario_id": "middle_pause",
+  "target_duration_seconds": 8.0,
+  "text": "The interesting part is that the first attempt looked fine, and then we noticed the numbers were slightly off whenever two workers overlapped.",
+  "voice": "Kore"
+}

@@ -1,0 +1,9 @@
+{
+  "duration_seconds": 13.981,
+  "model": "gemini-2.5-flash-preview-tts",
+  "pause_durations_seconds": [],
+  "scenario_id": "long_monologue",
+  "target_duration_seconds": 12.0,
+  "text": "So last week we finally shipped the migration and it was a much bigger job than anyone expected because the schema had drifted over two years and every service assumed something slightly different about the same three columns.",
+  "voice": "Kore"
+}

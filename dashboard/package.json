@@ -1,0 +1,24 @@
+{
+  "name": "blue-machines-workspace",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --hostname 127.0.0.1",
+    "build": "next build",
+    "start": "next start --hostname 127.0.0.1",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@fontsource/libre-caslon-condensed": "5.3.0",
+    "@fontsource/roboto": "5.3.0",
+    "livekit-client": "2.22.3",
+    "next": "16.3.5",
+    "react": "19.3.0",
+    "react-dom": "19.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "26.6.1",
+    "@types/react": "19.3.0",
+    "typescript": "7.0.2"
+  }
+}

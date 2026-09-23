@@ -1,0 +1,9 @@
+{
+  "duration_seconds": 1.621,
+  "model": "gemini-2.5-flash-preview-tts",
+  "pause_durations_seconds": [],
+  "scenario_id": "stop_before_ack",
+  "target_duration_seconds": 1.2,
+  "text": "Yes, exactly.",
+  "voice": "Kore"
+}

@@ -1,0 +1,27 @@
+.env
+.venv/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+*.py[cod]
+outputs/*.jsonl
+!outputs/.gitkeep
+!outputs/benchmark-events.jsonl
+
+# Next.js workspace
+node_modules/
+.next/
+out/
+*.tsbuildinfo
+next-env.d.ts
+.env.local
+.env.*.local
+
+# Local development process state and logs
+.runtime/
+
+# Local agent tooling and canvas scaffolding - present on disk, not part of the
+# submission.
+.commandcode/
+.october/
+:memory:.ses

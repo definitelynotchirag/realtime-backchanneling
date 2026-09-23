@@ -1,0 +1,52 @@
+[build-system]
+requires = ["hatchling==1.32.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "blue-machines-baseline"
+version = "0.1.0"
+description = "Phase 1 LiveKit voice-agent baseline for the Blue Machines assignment"
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "fastapi==0.141.1",
+    "livekit-agents==1.8.2",
+    "livekit-plugins-elevenlabs==1.8.2",
+    "livekit-plugins-google==1.8.2",
+    "livekit-plugins-groq==1.8.2",
+    "livekit-plugins-openai==1.8.2",
+    "livekit-plugins-silero==1.8.2",
+    "pydantic==2.13.5",
+    "python-dotenv==1.2.3",
+    "typesafe-sdk==0.6.0",
+    "uvicorn[standard]==0.53.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest==9.1.1",
+    "ruff==0.16.8",
+]
+
+[project.scripts]
+blue-machines-agent = "blue_machines_baseline.agent:main"
+blue-machines-benchmark = "blue_machines_baseline.benchmark:main"
+blue-machines-scenario = "blue_machines_baseline.simulator:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/blue_machines_baseline"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
