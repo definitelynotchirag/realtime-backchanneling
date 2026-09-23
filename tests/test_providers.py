@@ -3,7 +3,7 @@ import pickle
 from livekit.agents import inference
 from livekit.plugins import elevenlabs, google, groq
 
-from blue_machines_baseline import gemini_tts
+from blue_machines_baseline import gemini_tts, groq_interim_stt
 from blue_machines_baseline.agent import create_llm, create_stt, create_tts, entrypoint
 from blue_machines_baseline.config import Settings
 
@@ -90,6 +90,18 @@ def test_groq_stt_is_batch_only() -> None:
     # transcripts, which is why Jev mode cannot run on this provider.
     assert stt.capabilities.streaming is False
     assert stt.capabilities.interim_results is False
+
+
+def test_groq_interim_stt_reports_interim_capability() -> None:
+    settings = settings_for_provider_tests(STT_PROVIDER="groq_interim")
+
+    stt = create_stt(settings)
+
+    assert isinstance(stt, groq_interim_stt.STT)
+    assert stt.provider == "groq"
+    # Interim transcripts are the whole point: Jev mode depends on them.
+    assert stt.capabilities.streaming is True
+    assert stt.capabilities.interim_results is True
 
 
 def test_groq_tts_uses_the_bundled_plugin() -> None:

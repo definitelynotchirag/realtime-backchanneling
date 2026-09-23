@@ -141,3 +141,49 @@ def test_livekit_token_endpoint_accepts_all_three_experiment_modes(monkeypatch) 
             json={"scenario_id": "short_answer", "mode": mode},
         )
         assert response.status_code == 201
+
+
+def test_jev_mode_is_refused_before_the_room_is_created(monkeypatch) -> None:
+    """Jev needs interim transcripts; a batch-only STT would leave a silent room."""
+
+    monkeypatch.setenv("STT_PROVIDER", "groq")
+    monkeypatch.setenv("LIVEKIT_URL", "wss://example.livekit.cloud")
+    monkeypatch.setenv("LIVEKIT_API_KEY", "12345678901234567890123456789012")
+    monkeypatch.setenv("LIVEKIT_API_SECRET", "abcdefghijklmnopqrstuvwxyz123456")
+
+    response = TestClient(app).post(
+        "/livekit/token", json={"scenario_id": "short_answer", "mode": "jev_backchannel"}
+    )
+
+    assert response.status_code == 409
+    detail = response.json()["detail"]
+    assert "interim transcripts" in detail
+    assert "groq" in detail
+
+
+def test_timer_mode_is_allowed_with_a_batch_only_stt(monkeypatch) -> None:
+    monkeypatch.setenv("STT_PROVIDER", "groq")
+    monkeypatch.setenv("LIVEKIT_URL", "wss://example.livekit.cloud")
+    monkeypatch.setenv("LIVEKIT_API_KEY", "12345678901234567890123456789012")
+    monkeypatch.setenv("LIVEKIT_API_SECRET", "abcdefghijklmnopqrstuvwxyz123456")
+
+    response = TestClient(app).post(
+        "/livekit/token", json={"scenario_id": "short_answer", "mode": "backchannel"}
+    )
+
+    assert response.status_code == 201
+    assert response.json()["room_name"].startswith("blue-machines-short_answer-")
+
+
+def test_jev_mode_is_allowed_with_an_interim_stt(monkeypatch) -> None:
+    monkeypatch.setenv("STT_PROVIDER", "groq_interim")
+    monkeypatch.setenv("LIVEKIT_URL", "wss://example.livekit.cloud")
+    monkeypatch.setenv("LIVEKIT_API_KEY", "12345678901234567890123456789012")
+    monkeypatch.setenv("LIVEKIT_API_SECRET", "abcdefghijklmnopqrstuvwxyz123456")
+
+    response = TestClient(app).post(
+        "/livekit/token", json={"scenario_id": "short_answer", "mode": "jev_backchannel"}
+    )
+
+    assert response.status_code == 201
+    assert response.json()["room_name"].startswith("blue-machines-short_answer-")

@@ -547,6 +547,17 @@ export default function Workspace() {
       setFeedView("live");
       setLiveState("connected");
       setLiveMessage("LiveKit connected; room is listening.");
+      // A worker can refuse the room (for example Jev mode without an interim
+      // STT) and then nothing ever joins. Say so instead of leaving the room
+      // silently empty.
+      window.setTimeout(() => {
+        if (roomRef.current !== room) return;
+        const agentPresent = Array.from(room.remoteParticipants.values()).some((participant) => participant.identity !== room.localParticipant.identity);
+        if (!agentPresent) {
+          setLiveMessage("Connected, but no agent joined this room.");
+          setLiveError("No agent joined. Check that the worker is running and that your policy is supported by the configured STT (Jev needs interim transcripts).");
+        }
+      }, 12000);
     } catch (error) {
       roomRef.current?.disconnect();
       roomRef.current = null;

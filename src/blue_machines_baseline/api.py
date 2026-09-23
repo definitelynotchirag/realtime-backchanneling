@@ -24,7 +24,7 @@ from .benchmark import (
     write_jsonl,
     write_report,
 )
-from .config import event_log_path_from_env
+from .config import BATCH_ONLY_STT_PROVIDERS, JEV_INTERIM_STT_ERROR, event_log_path_from_env
 
 load_dotenv()
 
@@ -173,6 +173,14 @@ def livekit_token(request: LiveKitTokenRequest) -> dict[str, str]:
 
     if request.scenario_id not in SCENARIO_BY_ID:
         raise HTTPException(status_code=422, detail="Unknown benchmark scenario")
+    stt_provider = os.environ.get("STT_PROVIDER", "livekit_inference").strip().lower()
+    # Refuse the mode before the room exists: the worker raises the same error
+    # and never joins, which otherwise looks like "the agent is not connecting".
+    if request.mode == "jev_backchannel" and stt_provider in BATCH_ONLY_STT_PROVIDERS:
+        raise HTTPException(
+            status_code=409,
+            detail=JEV_INTERIM_STT_ERROR.format(provider=stt_provider),
+        )
     api_key = os.environ.get("LIVEKIT_API_KEY", "").strip()
     api_secret = os.environ.get("LIVEKIT_API_SECRET", "").strip()
     server_url = os.environ.get("LIVEKIT_URL", "").strip()

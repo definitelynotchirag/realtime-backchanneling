@@ -17,10 +17,10 @@ from livekit.agents import Agent, AgentServer, AgentSession, JobContext, cli, in
 from livekit.plugins import elevenlabs, google, groq, openai, silero
 from typesafe_sdk import AsyncTypeSafeClient
 
-from . import gemini_tts
+from . import gemini_tts, groq_interim_stt
 from .backchannel import BackchannelEngine
 from .benchmark import parse_run_context
-from .config import ConfigurationError, Settings
+from .config import JEV_INTERIM_STT_ERROR, ConfigurationError, Settings
 from .eot_detector import EotDetector
 from .events import EventRecorder
 from .jev import JevClassifier, JevTurnController
@@ -105,7 +105,7 @@ def _metric_summary(metric: Any) -> dict[str, Any]:
     return result
 
 
-def create_stt(settings: Settings) -> inference.STT | groq.STT:
+def create_stt(settings: Settings) -> inference.STT | groq.STT | groq_interim_stt.STT:
     """Create streaming LiveKit STT, with Groq retained as a final-only fallback."""
 
     if settings.stt_provider == "livekit_inference":
@@ -119,6 +119,12 @@ def create_stt(settings: Settings) -> inference.STT | groq.STT:
     if settings.groq_api_key is None:
         raise ConfigurationError(
             f"GROQ_API_KEY is required when STT_PROVIDER={settings.stt_provider}"
+        )
+    if settings.stt_provider == "groq_interim":
+        return groq_interim_stt.STT(
+            model=settings.groq_stt_model,
+            api_key=settings.groq_api_key.get_secret_value(),
+            interim_interval_seconds=settings.groq_interim_interval_seconds,
         )
     return groq.STT(
         model=settings.groq_stt_model,
@@ -501,9 +507,7 @@ async def entrypoint(ctx: JobContext) -> None:
     semantic_required = mode == "jev_backchannel"
     stt = create_stt(settings)
     if semantic_required and not stt.capabilities.interim_results:
-        raise ConfigurationError(
-            "Jev backchannel mode requires an STT provider with interim transcripts"
-        )
+        raise ConfigurationError(JEV_INTERIM_STT_ERROR.format(provider=settings.stt_provider))
     if semantic_required and settings.typesafe_api_key is None:
         raise ConfigurationError("TYPESAFE_API_KEY is required when mode=jev_backchannel")
     llm = create_llm(settings)

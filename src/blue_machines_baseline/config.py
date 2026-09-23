@@ -18,8 +18,23 @@ class ConfigurationError(ValueError):
 
 TTSProvider = Literal["livekit_inference", "elevenlabs", "gemini_tts", "groq_tts"]
 LLMProvider = Literal["gemini", "openrouter", "groq"]
-STTProvider = Literal["livekit_inference", "groq"]
+STTProvider = Literal["livekit_inference", "groq", "groq_interim"]
 EotDetector = Literal["livekit_inference", "final_transcript"]
+
+BATCH_ONLY_STT_PROVIDERS = frozenset({"groq"})
+"""Providers that only transcribe after the fact. ``groq_interim`` is not one of
+them: it transcribes the same endpoint on a cadence, so it does emit interims."""
+"""Providers that only transcribe after the fact, so they never emit interim
+transcripts. Jev mode needs them, which is why it is rejected for these."""
+
+JEV_INTERIM_STT_ERROR = (
+    "Jev mode needs interim transcripts while the user speaks, and "
+    "STT_PROVIDER={provider} transcribes in batches only. Use "
+    "STT_PROVIDER=groq_interim (interim transcripts on the Groq endpoint) or "
+    "switch to the Timer policy."
+)
+"""One message for both the worker and the token endpoint, so the UI and the
+worker log never disagree about why Jev mode was refused."""
 
 DEFAULT_OPENROUTER_FALLBACK_MODELS = (
     "google/gemma-4-26b-a4b-it:free",
@@ -40,6 +55,7 @@ class Settings(BaseModel):
     livekit_stt_model: str = "google/gemini-3.5-transcribe-live"
     groq_api_key: SecretStr | None = None
     groq_stt_model: str = "whisper-large-v3-turbo"
+    groq_interim_interval_seconds: float = 1.2
     backchannel_enabled: bool = False
     backchannel_text: str = "mm-hmm"
     backchannel_delay_seconds: float = 1.4
@@ -86,10 +102,12 @@ class Settings(BaseModel):
             "LIVEKIT_API_SECRET": source.get("LIVEKIT_API_SECRET", "").strip(),
         }
         stt_provider = source.get("STT_PROVIDER", "livekit_inference").strip().lower()
-        if stt_provider == "groq":
+        if stt_provider in {"groq", "groq_interim"}:
             required["GROQ_API_KEY"] = source.get("GROQ_API_KEY", "").strip()
         elif stt_provider != "livekit_inference":
-            raise ConfigurationError("STT_PROVIDER must be one of: livekit_inference, groq")
+            raise ConfigurationError(
+                "STT_PROVIDER must be one of: livekit_inference, groq, groq_interim"
+            )
         llm_provider = source.get("LLM_PROVIDER", "gemini").strip().lower()
         if llm_provider == "gemini":
             required["GEMINI_API_KEY"] = source.get("GEMINI_API_KEY", "").strip()
@@ -188,6 +206,7 @@ class Settings(BaseModel):
                 else None
             ),
             groq_stt_model=source.get("GROQ_STT_MODEL", "whisper-large-v3-turbo").strip(),
+            groq_interim_interval_seconds=parse_float("GROQ_INTERIM_INTERVAL_SECONDS", 1.2),
             backchannel_enabled=parse_bool("BACKCHANNEL_ENABLED", False),
             backchannel_text=source.get("BACKCHANNEL_TEXT", "mm-hmm").strip(),
             backchannel_delay_seconds=parse_float("BACKCHANNEL_DELAY_SECONDS", 1.4),

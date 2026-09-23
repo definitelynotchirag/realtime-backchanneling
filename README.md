@@ -31,7 +31,8 @@ offline policy replay, the comparison table, and the visual run timeline.
   utterance once, then drives every (scenario, mode, repeat) through real LiveKit rooms
   with real audio - no human at the microphone, and no dependence on speaking twice.
 - Provider options for environments where LiveKit Inference is unavailable: native Groq
-  for all three roles (`STT_PROVIDER=groq`, `LLM_PROVIDER=groq`, `TTS_PROVIDER=groq_tts`),
+  for all three roles (`STT_PROVIDER=groq_interim`, `LLM_PROVIDER=groq`,
+  `TTS_PROVIDER=groq_tts`),
   a direct Gemini TTS adapter (`TTS_PROVIDER=gemini_tts`). Groq's speech model additionally
   requires a one-time terms acceptance in their console; the API returns
   `model_terms_required` until then, with the acceptance link in the error.
@@ -39,6 +40,9 @@ offline policy replay, the comparison table, and the visual run timeline.
   detector running on the user's audio, with an automatic final-transcript fallback. Each
   `eot_prediction` event names the model that answered (`turn-detector-v1-mini` locally,
   `turn-detector-v1` when the gateway serves it).
+- `STT_PROVIDER=groq_interim`: interim transcripts from a batch-only provider, so the Jev
+  semantic policy can run without a streaming STT subscription. Measured on a real turn:
+  seven interim transcripts during an 8.8 s utterance, then the final.
 - FastAPI `/health`, `/events`, `/benchmark/report`, `/benchmark/replay`, and
   `/livekit/token` endpoints.
 - Explicit tests for cooldown, EOT suppression, failed TTS, rapid transitions, and
@@ -304,8 +308,12 @@ STT_PROVIDER=groq LLM_PROVIDER=groq TTS_PROVIDER=groq_tts EOT_DETECTOR=livekit_i
 uv run blue-machines-scenario --scenarios all --modes baseline,backchannel --repeats 3
 ```
 
-Jev mode is not part of that sweep: it requires interim transcripts, and Groq's STT is
-batch-only. With a streaming STT configured, add `jev_backchannel` to `--modes` and the
+Jev mode is not part of that sweep, but it is runnable: use
+`STT_PROVIDER=groq_interim`, which transcribes Groq's endpoint on a cadence so interim
+transcripts arrive while the user speaks. With plain `STT_PROVIDER=groq` (batch, final-only)
+the Python API refuses `jev_backchannel` with a 409 before the room exists, so the UI
+explains the problem instead of leaving an empty room - which means the API and the worker
+must be started with the same `STT_PROVIDER`. With a streaming STT configured, add `jev_backchannel` to `--modes` and the
 same driver covers all three policies.
 
 ## Fairness and race analysis

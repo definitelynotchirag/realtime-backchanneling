@@ -82,6 +82,14 @@ class EventLogTail:
         self._path = path
         self._offset = path.stat().st_size if path.exists() else 0
         self._partial = ""
+        self.response_seen = False
+        """Whether a response started after the tail was opened.
+
+        The tail is opened once the clip has finished playing, so a response
+        recorded here is the agent's answer to the user's turn. Agent *audio* is
+        not a substitute: in backchannel mode the cached cue is agent audio too,
+        and it plays even when the speech provider rejects the answer.
+        """
 
     def poll(self, run_id: str) -> str | None:
         """Return the first terminal event name seen for this run, if any."""
@@ -105,6 +113,8 @@ class EventLogTail:
             if not isinstance(record, dict) or record.get("run_id") != run_id:
                 continue
             name = record.get("name")
+            if name == "agent_response_started":
+                self.response_seen = True
             if isinstance(name, str) and name in TERMINAL_EVENTS:
                 return name
         return None
@@ -356,6 +366,7 @@ class RunOutcome:
     room_name: str
     agent_joined: bool
     agent_spoke: bool
+    agent_answered: bool
     elapsed_seconds: float
 
 
@@ -478,6 +489,7 @@ async def drive_one(
             room_name=room_name,
             agent_joined=state["agent_joined"],
             agent_spoke=state["agent_spoke"],
+            agent_answered=tail.response_seen,
             elapsed_seconds=round(time.monotonic() - started, 2),
         )
     finally:
@@ -528,17 +540,18 @@ async def run_benchmark(
                 print(
                     f"{outcome.scenario_id:24s} {outcome.mode:16s} {outcome.run_id:32s} "
                     f"agent={'yes' if outcome.agent_joined else 'NO ':3s} "
-                    f"spoke={'yes' if outcome.agent_spoke else 'NO ':3s} "
+                    f"answered={'yes' if outcome.agent_answered else 'NO ':3s} "
+                    f"audio={'yes' if outcome.agent_spoke else 'NO ':3s} "
                     f"{outcome.elapsed_seconds:6.1f}s",
                     flush=True,
                 )
-                silent_streak = 0 if outcome.agent_spoke else silent_streak + 1
+                silent_streak = 0 if outcome.agent_answered else silent_streak + 1
                 if silent_streak >= max_silent_runs:
-                    # A run with no agent audio is not a measurement: it is a
-                    # provider failure (quota, rate limit) or a broken worker.
-                    # Stop instead of filling the log with empty runs.
+                    # A run with no answer is not a measurement: it is a provider
+                    # failure (quota, rate limit) or a broken worker. Stop instead
+                    # of filling the log with empty runs.
                     print(
-                        f"stopping: {silent_streak} consecutive runs produced no agent audio "
+                        f"stopping: {silent_streak} consecutive runs produced no agent answer "
                         "- check provider quota and the worker log",
                         flush=True,
                     )
