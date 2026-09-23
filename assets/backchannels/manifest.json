@@ -1,19 +1,10 @@
 {
   "cues": {
-    "i-see": {
-      "duration_seconds": 0.527,
-      "phrase": "I see"
-    },
-    "mm-hmm": {
-      "duration_seconds": 0.49,
-      "phrase": "mm-hm"
-    },
-    "uh-huh": {
-      "duration_seconds": 0.429,
-      "phrase": "uh-huh"
+    "keep going": {
+      "duration_seconds": 0.648,
+      "phrase": "keep going"
     }
   },
   "model": "aura-2-thalia-en",
-  "provider": "deepgram_tts",
-  "sample_rate": 48000
+  "provider": "deepgram_tts"
 }

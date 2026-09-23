@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import time
 from collections import deque
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Collection, Mapping
 from dataclasses import dataclass
 from typing import Protocol
 
@@ -33,11 +33,27 @@ class JevDecision:
     cue_text: str
 
 
-CUE_TEXT_BY_STYLE = {
-    "neutral": "mm-hmm",
-    "following": "uh-huh",
-    "understanding": "I see",
+CUE_BANK_BY_STYLE: dict[str, tuple[str, ...]] = {
+    # Minimal continuers: they claim nothing beyond "I am still listening".
+    "neutral": ("mm-hmm", "mm", "hmm"),
+    # "Stay with me, keep going": used while the speaker lists or tells a story.
+    "following": ("uh-huh", "go on", "keep going"),
+    # Receipts: the speaker's explanation landed. They acknowledge comprehension,
+    # never agreement - "makes sense" is about the telling, not the claim.
+    "understanding": ("I see", "got it", "okay", "makes sense"),
 }
+"""Acknowledgements a human listener actually uses, grouped by what they claim.
+
+Ten cues, and the grouping is the safety property: phrases inside a group are
+interchangeable, so the policy can vary the wording without changing what is being
+asserted. Words that *agree* - "yes", "yeah", "right", "sure", "exactly", "of course" - stay
+out on purpose: a listener sound must not endorse a claim the agent has not checked,
+and "right" reads as "correct" often enough to be indistinguishable from agreement.
+"hmm" is included as a considering sound, not as doubt, which is the reading its flat
+delivery gets in the cue audio.
+"""
+
+CUE_TEXT_BY_STYLE = {style: phrases[0] for style, phrases in CUE_BANK_BY_STYLE.items()}
 
 SPEECH_TYPE_TO_CUE_STYLE = {
     "plain_continuation": "neutral",
@@ -59,9 +75,13 @@ class JevClassifier:
         helpful_threshold_semantic: float = 0.52,
         expects_answer_ceiling: float = 0.60,
         expects_answer_ceiling_semantic: float = 0.50,
+        available_cues: Collection[str] | None = None,
     ) -> None:
         self._client = client
         self._model = model
+        self._available_cues = set(available_cues) if available_cues is not None else None
+        self._cue_index: dict[str, int] = {}
+        self._last_chosen_cue: str | None = None
         self._approval_threshold = approval_threshold
         # How helpful a cue must look before it is played, and how likely the user
         # must be *not* to expect an answer. The semantic pair is the stricter one:
@@ -140,8 +160,11 @@ class JevClassifier:
         choice = str(getattr(stage, "choice", "complete"))
         speech_type = str(getattr(answers["speech_type"], "choice", "uncertain_or_ambiguous"))
         cue_style = SPEECH_TYPE_TO_CUE_STYLE.get(speech_type, "neutral")
-        cue_text = CUE_TEXT_BY_STYLE.get(cue_style, CUE_TEXT_BY_STYLE["neutral"])
-        cue_is_allowed = speech_type in SPEECH_TYPE_TO_CUE_STYLE
+        cue_text, playable = self._choose_cue(cue_style)
+        # A cue with no audio cannot be played from cache, and letting it fall through
+        # to on-demand synthesis would turn a 20 ms cue into a one second one - the
+        # trade this design exists to avoid. No audio therefore means no cue.
+        cue_is_allowed = speech_type in SPEECH_TYPE_TO_CUE_STYLE and playable
         # Story and explanation cues carry more meaning than a neutral "mm-hmm",
         # so they keep a stricter bar than plain continuation - but both bars sit
         # where the classifier's probabilities actually fall. An earlier version
@@ -177,6 +200,32 @@ class JevClassifier:
             cue_style=cue_style,
             cue_text=cue_text,
         )
+
+    def _choose_cue(self, cue_style: str) -> tuple[str, bool]:
+        """Pick the next phrase for a style, and whether it can actually be played.
+
+        Rotation rather than a second model call: which of a style's phrases is used is
+        a matter of variety, because they are interchangeable by construction. When no
+        phrase for the style has audio, the style's default is still named so the
+        decision reads sensibly, and `playable` is False so it is never approved.
+        """
+
+        default = CUE_TEXT_BY_STYLE.get(cue_style, CUE_TEXT_BY_STYLE["neutral"])
+        candidates = [
+            phrase
+            for phrase in CUE_BANK_BY_STYLE.get(cue_style, ())
+            if self._available_cues is None or phrase in self._available_cues
+        ]
+        if not candidates:
+            return default, False
+        index = self._cue_index.get(cue_style, 0) % len(candidates)
+        chosen = candidates[index]
+        if chosen == self._last_chosen_cue and len(candidates) > 1:
+            index = (index + 1) % len(candidates)
+            chosen = candidates[index]
+        self._cue_index[cue_style] = index + 1
+        self._last_chosen_cue = chosen
+        return chosen, True
 
     async def aclose(self) -> None:
         close = getattr(self._client, "aclose", None)

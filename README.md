@@ -110,31 +110,45 @@ The optional `JEV_MODEL`, `JEV_TIMEOUT_SECONDS`, `JEV_MIN_INTERVAL_SECONDS`, and
 timeout, how often interim transcript snapshots may be classified, and how
 conservative approval is. Jev decisions must be asynchronous: timeouts and stale
 answers fall back to silence and never delay the real response.
-When Jev approves a cue, it chooses from a small safe vocabulary based on the
-partial transcript: `mm-hmm` for plain continuation, `uh-huh` for a clear list
-or story, and `I see` for an explanation or context. Thinking, uncertainty,
-questions, endings, and ambiguous speech stay silent. Agreement-heavy words
-such as `yes`, `yeah`, and `right` are intentionally excluded so the agent does
-not endorse an unverified claim.
-Jev also classifies the speech function before selecting a cue: plain
-continuation, list or story, explanation or context, thinking or uncertainty,
-explicitly continuing, question or ending, and emotional or ambiguous speech.
-The last two categories are fail-silent, and the code maps the approved speech
-function to its matching phrase instead of accepting an arbitrary phrase.
-The three phrases are pre-rendered, not synthesized during the turn: the worker loads
-`assets/backchannels/{mm-hmm,uh-huh,i-see}.wav` once at start, which is why a cue is
-audible ~20 ms after the policy approves it and costs no speech request.
-`assets/backchannels/manifest.json` records the provider, model and duration that produced
-them. Regenerate them in the worker's own voice with
+When Jev approves a cue, it chooses from a bank of ten acknowledgements grouped by what
+they claim. The group is the safety property: phrases inside a group are interchangeable, so
+the wording can vary without changing what is asserted.
+
+| Group | Cues | When it is used |
+|---|---|---|
+| neutral | `mm-hmm`, `mm`, `hmm` | plain continuation - claims only "I am still listening" |
+| following | `uh-huh`, `go on`, `keep going` | the speaker is listing steps, or telling a story |
+| understanding | `I see`, `got it`, `okay`, `makes sense` | the speaker explained something and it landed |
+
+Thinking, uncertainty, questions, endings, and ambiguous speech stay silent. Jev classifies
+the speech function before choosing, and only the three functions above can produce a cue -
+the rest are fail-silent by construction. Words that *agree* are excluded on purpose: `yes`,
+`yeah`, `sure`, `exactly`, and also `right`, because it reads as "correct" often enough to be
+indistinguishable from endorsement, and an acknowledgement must never endorse a claim the
+agent has not checked. Within a group the wording rotates and the same cue is never repeated
+back to back.
+
+Audio for the bank is rendered once per voice at session start by the configured speech
+provider, held in memory, and cached on disk under `.cache/backchannels` keyed by provider
+and voice, so a second room - or a later sweep - does not pay for it again. That is what keeps
+a cue a cue: from cache it is audible **14-23 ms** after the policy decides, where synthesizing
+it on demand costs 0.9-2.0 s (measured on these phrases) and lands the acknowledgement after
+the speaker has moved on. A bank that cannot be rendered falls back to the committed clips in
+`assets/backchannels`, which cover all ten cues, and each session records what it used in a
+`backchannel_clips_ready` event. `BACKCHANNEL_CLIP_SOURCE=assets` skips the provider entirely -
+the deterministic choice for a measurement sweep.
+
+Regenerate the fallback bank in the worker's own voice with
 
 ```bash
-uv run python scripts/generate-backchannel-clips.py
+uv run python scripts/generate-backchannel-clips.py          # the whole bank
+uv run python scripts/generate-backchannel-clips.py "go on"  # or a single cue
 ```
 
-The script follows `TTS_PROVIDER` and the agent's voice, trims leading and trailing
-silence, normalizes level, writes the rate the room plays out, and refuses to write a cue
-longer than 1.5 s - a long acknowledgement stops being an acknowledgement and holds the
-floor. The worker must be restarted afterwards: the clips are read once per process.
+The trim, level-normalization and length rules live in `blue_machines_baseline.cue_audio`, so
+a cue has the same shape whether it came from the provider at startup or from a committed
+file, and a cue longer than 1.5 s is rejected rather than shipped - a long acknowledgement
+holds the floor instead of acknowledging.
 
 During a genuinely long continuation, Jev may approve up to four additional cues after
 substantial new speech (the controller allows five per turn in total, with roughly seven

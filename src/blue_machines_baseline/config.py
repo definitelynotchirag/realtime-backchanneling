@@ -63,6 +63,11 @@ class Settings(BaseModel):
     groq_interim_interval_seconds: float = 3.0
     backchannel_enabled: bool = False
     backchannel_text: str = "mm-hmm"
+    backchannel_clip_source: Literal["tts", "assets"] = "tts"
+    """Where acknowledgement audio comes from. "tts" renders the cue bank once per
+    session in the configured voice and falls back to the committed clips if the
+    provider cannot; "assets" replays the committed clips only, which is the
+    deterministic choice for a measurement sweep."""
     backchannel_delay_seconds: float = 1.4
     backchannel_cooldown_seconds: float = 4.0
     collision_window_seconds: float = 0.5
@@ -127,6 +132,10 @@ class Settings(BaseModel):
             "LIVEKIT_API_SECRET": source.get("LIVEKIT_API_SECRET", "").strip(),
         }
         stt_provider = source.get("STT_PROVIDER", "livekit_inference").strip().lower()
+        backchannel_clip_source = source.get("BACKCHANNEL_CLIP_SOURCE", "tts").strip().lower()
+        if backchannel_clip_source not in {"tts", "assets"}:
+            raise ConfigurationError("BACKCHANNEL_CLIP_SOURCE must be 'tts' or 'assets'")
+
         if stt_provider in {"groq", "groq_interim"}:
             required["GROQ_API_KEY"] = source.get("GROQ_API_KEY", "").strip()
         elif stt_provider == "deepgram":
@@ -255,6 +264,7 @@ class Settings(BaseModel):
             groq_interim_interval_seconds=parse_float("GROQ_INTERIM_INTERVAL_SECONDS", 3.0),
             backchannel_enabled=parse_bool("BACKCHANNEL_ENABLED", False),
             backchannel_text=source.get("BACKCHANNEL_TEXT", "mm-hmm").strip(),
+            backchannel_clip_source=backchannel_clip_source,
             backchannel_delay_seconds=parse_float("BACKCHANNEL_DELAY_SECONDS", 1.4),
             backchannel_cooldown_seconds=parse_float("BACKCHANNEL_COOLDOWN_SECONDS", 4.0),
             collision_window_seconds=collision_window_seconds,

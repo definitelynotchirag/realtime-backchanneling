@@ -6,8 +6,9 @@ import asyncio
 import json
 import logging
 import sys
+import time
 import wave
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Sequence
 from pathlib import Path
 from typing import Any
 
@@ -21,24 +22,39 @@ from . import deepgram_stt, deepgram_tts, gemini_tts, groq_interim_stt, openrout
 from .backchannel import BackchannelEngine
 from .benchmark import parse_run_context
 from .config import JEV_INTERIM_STT_ERROR, ConfigurationError, Settings
+from .cue_audio import (
+    cue_phrases,
+    cue_slug,
+    read_cached_cues,
+    synthesize_cue_frames,
+    write_cached_cues,
+)
 from .eot_detector import EotDetector
 from .events import EventRecorder
-from .jev import JevClassifier, JevTurnController
+from .jev import CUE_BANK_BY_STYLE, JevClassifier, JevTurnController
 
 logger = logging.getLogger("blue-machines-baseline")
 
 
-def load_backchannel_clips() -> dict[str, rtc.AudioFrame]:
-    """Load pre-generated acknowledgement clips once per worker process."""
+BACKCHANNEL_CLIP_DIR = Path(__file__).resolve().parents[2] / "assets" / "backchannels"
 
-    clip_dir = Path(__file__).resolve().parents[2] / "assets" / "backchannels"
+CUE_TEXTS: tuple[str, ...] = tuple(cue for phrases in CUE_BANK_BY_STYLE.values() for cue in phrases)
+"""Every acknowledgement the policy may choose from."""
+
+
+def load_backchannel_clips(
+    cue_texts: Sequence[str] = CUE_TEXTS,
+) -> dict[str, rtc.AudioFrame]:
+    """Load the committed acknowledgement clips for the cues that have one.
+
+    This is the fallback path: with `BACKCHANNEL_CLIP_SOURCE=assets` it is the only
+    path, and otherwise it covers sessions where the speech provider cannot render the
+    cues at startup.
+    """
+
     clips: dict[str, rtc.AudioFrame] = {}
-    for cue_text, filename in {
-        "mm-hmm": "mm-hmm.wav",
-        "uh-huh": "uh-huh.wav",
-        "I see": "i-see.wav",
-    }.items():
-        path = clip_dir / filename
+    for cue_text in cue_texts:
+        path = BACKCHANNEL_CLIP_DIR / f"{cue_slug(cue_text)}.wav"
         if not path.exists():
             continue
         with wave.open(str(path), "rb") as source:
@@ -48,6 +64,96 @@ def load_backchannel_clips() -> dict[str, rtc.AudioFrame]:
                 num_channels=source.getnchannels(),
                 samples_per_channel=source.getnframes(),
             )
+    return clips
+
+
+async def synthesize_backchannel_clips(
+    settings: Settings,
+    cue_texts: Sequence[str] = CUE_TEXTS,
+    *,
+    timeout_seconds: float = 8.0,
+) -> dict[str, rtc.AudioFrame]:
+    """Render the cue bank in the configured voice, once, before the session starts.
+
+    Cheap to hold (a few hundred kilobytes) and the only way a cue stays a cue: from
+    cache it is audible in ~20 ms, whereas synthesizing per cue costs the provider's
+    time-to-first-audio and lands the acknowledgement after the speaker has moved on.
+    """
+
+    provider = create_tts(settings)
+    try:
+        return await asyncio.wait_for(
+            synthesize_cue_frames(provider, cue_phrases(cue_texts)), timeout=timeout_seconds
+        )
+    finally:
+        close = getattr(provider, "aclose", None)
+        if callable(close):
+            await close()
+
+
+def cue_cache_key(settings: Settings) -> str:
+    """Which voice the cached cues belong to.
+
+    Every room runs in its own process, so this is what keeps a sweep from paying the
+    provider once per room.
+    """
+
+    voice = getattr(create_tts(settings), "model", "") or settings.scenario_tts_model or "default"
+    return f"{settings.tts_provider}-{voice}".replace("/", "-").replace(":", "-")
+
+
+async def load_cue_clips(settings: Settings, recorder: EventRecorder) -> dict[str, rtc.AudioFrame]:
+    """The cue audio this session will play from.
+
+    Precedence: cues already rendered for this voice, then a fresh render from the
+    configured provider, then the committed clips. Whatever the first two are missing
+    is filled from the committed bank, so the policy always has audio to choose from and
+    never falls through to a one-second on-demand synthesis.
+    """
+
+    assets = load_backchannel_clips()
+    if settings.backchannel_clip_source == "assets":
+        recorder.record("backchannel_clips_ready", source="assets", cue_count=len(assets))
+        return assets
+
+    clips = dict(assets)
+    started = time.monotonic()
+    missing: list[str] = []
+    try:
+        cache_key = cue_cache_key(settings)
+        cached = read_cached_cues(cache_key, CUE_TEXTS)
+        clips.update(cached)
+        missing = [cue for cue in CUE_TEXTS if cue not in cached]
+        if missing:
+            produced = await synthesize_backchannel_clips(settings, missing)
+            write_cached_cues(cache_key, produced)
+            clips.update(produced)
+    except (Exception, asyncio.CancelledError) as exc:  # noqa: BLE001 - any failure degrades
+        if isinstance(exc, asyncio.CancelledError):
+            raise
+        logger.warning(
+            "could not render every acknowledgement cue with %s (%s: %s); the "
+            "committed clips cover the rest",
+            settings.tts_provider,
+            type(exc).__name__,
+            str(exc)[:160],
+        )
+        recorder.record(
+            "backchannel_clips_ready",
+            source="assets",
+            cue_count=len(clips),
+            fallback_reason=type(exc).__name__,
+        )
+        return clips
+
+    recorder.record(
+        "backchannel_clips_ready",
+        source="tts",
+        cue_count=len(clips),
+        rendered=len(missing),
+        provider=settings.tts_provider,
+        duration_ms=round((time.monotonic() - started) * 1000, 1),
+    )
     return clips
 
 
@@ -681,7 +787,9 @@ async def entrypoint(ctx: JobContext) -> None:
     jev_controller_ref: list[JevTurnController] = []
     eot_detector_ref: list[EotDetector] = []
     cue_state = {"text": settings.backchannel_text}
-    cached_clips = load_backchannel_clips()
+    # Rendered before the session starts, from the configured voice. Held in memory so
+    # a cue is audible ~20 ms after the policy decides on one.
+    cached_clips = await load_cue_clips(settings, recorder)
     backchannel = attach_backchanneling(
         session,
         settings,
@@ -708,6 +816,7 @@ async def entrypoint(ctx: JobContext) -> None:
                 retry=RetryPolicy(max_retries=0),
             ),
             model=settings.jev_model,
+            available_cues=set(cached_clips),
             approval_threshold=settings.jev_approval_threshold,
             helpful_threshold=settings.jev_helpful_threshold,
             helpful_threshold_semantic=settings.jev_helpful_threshold_semantic,

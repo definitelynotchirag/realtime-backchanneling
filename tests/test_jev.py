@@ -2,7 +2,12 @@ import asyncio
 from types import SimpleNamespace
 
 from blue_machines_baseline.backchannel import BackchannelEngine
-from blue_machines_baseline.jev import CUE_TEXT_BY_STYLE, JevClassifier, JevTurnController
+from blue_machines_baseline.jev import (
+    CUE_BANK_BY_STYLE,
+    CUE_TEXT_BY_STYLE,
+    JevClassifier,
+    JevTurnController,
+)
 
 
 class FakeHandle:
@@ -378,3 +383,93 @@ def test_jev_error_fails_closed_without_playing_audio() -> None:
         await engine.aclose()
 
     asyncio.run(scenario())
+
+
+def test_each_style_has_more_than_one_phrase_to_vary() -> None:
+    assert all(len(bank) >= 2 for bank in CUE_BANK_BY_STYLE.values())
+
+
+def _answer(*, speech_type: str, helpful: float = 0.9, expects: float = 0.1) -> SimpleNamespace:
+    """A classifier response that approves, for a given speech type."""
+
+    return SimpleNamespace(
+        answers={
+            "turn_stage": SimpleNamespace(
+                choice="continuing", confidence=0.9, probabilities={"continuing": 0.9}
+            ),
+            "ack_helpful": SimpleNamespace(noul=helpful),
+            "expects_answer": SimpleNamespace(noul=expects),
+            "speech_type": SimpleNamespace(
+                choice=speech_type, confidence=0.9, probabilities={speech_type: 0.9}
+            ),
+        }
+    )
+
+
+def test_the_classifier_never_repeats_the_cue_it_just_used() -> None:
+    """Two approvals of the same style should not both say "mm-hmm"."""
+
+    async def scenario() -> None:
+        classifier = JevClassifier(FakeClient(_answer(speech_type="plain_continuation")))
+
+        first = (await classifier.classify("a partial transcript that is continuing")).cue_text
+        second = (await classifier.classify("another partial transcript")).cue_text
+
+        assert first != second
+        assert {first, second} <= set(CUE_BANK_BY_STYLE["neutral"])
+
+    asyncio.run(scenario())
+
+
+def test_a_cue_without_audio_is_not_approved() -> None:
+    """Falling through to on-demand synthesis would turn a 20 ms cue into a 1 s one."""
+
+    async def scenario() -> None:
+        classifier = JevClassifier(
+            FakeClient(_answer(speech_type="list_or_story")),
+            available_cues={"mm-hmm", "I see"},  # nothing from the "following" bank
+        )
+
+        decision = await classifier.classify("so first this, then that, and then the other")
+
+        assert decision.cue_style == "following"
+        assert decision.approved is False
+        # The decision still names the style's default cue; it is simply not playable.
+        assert decision.cue_text == CUE_BANK_BY_STYLE["following"][0]
+
+    asyncio.run(scenario())
+
+
+def test_the_classifier_uses_the_playable_phrase_in_its_style() -> None:
+    async def scenario() -> None:
+        classifier = JevClassifier(
+            FakeClient(_answer(speech_type="list_or_story")),
+            available_cues={"uh-huh"},
+        )
+
+        decision = await classifier.classify("so first this, then that, and then the other")
+
+        assert decision.approved is True
+        assert decision.cue_text == "uh-huh"
+
+    asyncio.run(scenario())
+
+
+def test_the_cue_bank_covers_ten_ways_to_acknowledge_without_agreeing() -> None:
+    """The vocabulary is grouped by what a cue claims, and nothing in it agrees.
+
+    Words like "yes" or "exactly" would have the agent endorse a claim it has not
+    checked, which is why the bank stops at acknowledgements a listener makes about
+    *hearing* someone rather than about the truth of what they said.
+    """
+
+    phrases = [cue for bank in CUE_BANK_BY_STYLE.values() for cue in bank]
+
+    assert len(phrases) >= 10
+    assert len(set(phrases)) == len(phrases)
+    assert {"mm-hmm", "uh-huh", "I see"} <= set(phrases)
+    banned = {"yes", "yeah", "sure", "exactly", "of course", "correct", "agree"}
+    assert not banned & set(phrases)
+    assert all(len(bank) >= 2 for bank in CUE_BANK_BY_STYLE.values())
+    # The default cue per style is what older logs and docs refer to.
+    assert all(CUE_TEXT_BY_STYLE[style] == bank[0] for style, bank in CUE_BANK_BY_STYLE.items())
