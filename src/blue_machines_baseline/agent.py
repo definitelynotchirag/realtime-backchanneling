@@ -559,6 +559,10 @@ async def entrypoint(ctx: JobContext) -> None:
             ),
             model=settings.jev_model,
             approval_threshold=settings.jev_approval_threshold,
+            helpful_threshold=settings.jev_helpful_threshold,
+            helpful_threshold_semantic=settings.jev_helpful_threshold_semantic,
+            expects_answer_ceiling=settings.jev_expects_answer_ceiling,
+            expects_answer_ceiling_semantic=settings.jev_expects_answer_ceiling_semantic,
         )
         jev_controller = JevTurnController(
             backchannel,

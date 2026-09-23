@@ -55,10 +55,21 @@ class JevClassifier:
         *,
         model: str = "jev-latest",
         approval_threshold: float = 0.55,
+        helpful_threshold: float = 0.50,
+        helpful_threshold_semantic: float = 0.52,
+        expects_answer_ceiling: float = 0.60,
+        expects_answer_ceiling_semantic: float = 0.50,
     ) -> None:
         self._client = client
         self._model = model
         self._approval_threshold = approval_threshold
+        # How helpful a cue must look before it is played, and how likely the user
+        # must be *not* to expect an answer. The semantic pair is the stricter one:
+        # "uh-huh" and "I see" claim more than a neutral "mm-hmm" does.
+        self._helpful_threshold = helpful_threshold
+        self._helpful_threshold_semantic = helpful_threshold_semantic
+        self._expects_answer_ceiling = expects_answer_ceiling
+        self._expects_answer_ceiling_semantic = expects_answer_ceiling_semantic
 
     async def classify(
         self, transcript: str, context: Mapping[str, object] | None = None
@@ -131,12 +142,22 @@ class JevClassifier:
         cue_style = SPEECH_TYPE_TO_CUE_STYLE.get(speech_type, "neutral")
         cue_text = CUE_TEXT_BY_STYLE.get(cue_style, CUE_TEXT_BY_STYLE["neutral"])
         cue_is_allowed = speech_type in SPEECH_TYPE_TO_CUE_STYLE
-        # Plain continuation is the safe, neutral case. Jev can be slightly
-        # uncertain about helpfulness here, so use a softer gate for the
-        # repeated "mm-hmm" cue while keeping story/explanation cues strict.
+        # Story and explanation cues carry more meaning than a neutral "mm-hmm",
+        # so they keep a stricter bar than plain continuation - but both bars sit
+        # where the classifier's probabilities actually fall. An earlier version
+        # demanded 0.55 helpfulness and 0.45 "expects an answer" for those styles,
+        # which rejected almost every "uh-huh"/"I see" the model offered (the
+        # measured distribution clusters at 0.52-0.58) and left only the neutral
+        # cue audible.
         neutral_continuation = speech_type == "plain_continuation"
-        helpful_threshold = 0.50 if neutral_continuation else self._approval_threshold
-        answer_threshold = 0.50 if neutral_continuation else 1.0 - self._approval_threshold
+        helpful_threshold = (
+            self._helpful_threshold if neutral_continuation else self._helpful_threshold_semantic
+        )
+        answer_threshold = (
+            self._expects_answer_ceiling
+            if neutral_continuation
+            else self._expects_answer_ceiling_semantic
+        )
         approved = (
             choice == "continuing"
             and continuing >= self._approval_threshold

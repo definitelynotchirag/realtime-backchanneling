@@ -55,7 +55,7 @@ class Settings(BaseModel):
     livekit_stt_model: str = "google/gemini-3.5-transcribe-live"
     groq_api_key: SecretStr | None = None
     groq_stt_model: str = "whisper-large-v3-turbo"
-    groq_interim_interval_seconds: float = 1.2
+    groq_interim_interval_seconds: float = 3.0
     backchannel_enabled: bool = False
     backchannel_text: str = "mm-hmm"
     backchannel_delay_seconds: float = 1.4
@@ -67,6 +67,10 @@ class Settings(BaseModel):
     jev_timeout_seconds: float = 2.5
     jev_min_interval_seconds: float = 0.75
     jev_approval_threshold: float = 0.55
+    jev_helpful_threshold: float = 0.50
+    jev_helpful_threshold_semantic: float = 0.52
+    jev_expects_answer_ceiling: float = 0.60
+    jev_expects_answer_ceiling_semantic: float = 0.50
     llm_provider: LLMProvider = "gemini"
     gemini_api_key: SecretStr | None = None
     gemini_model: str = "gemini-2.5-flash"
@@ -206,7 +210,7 @@ class Settings(BaseModel):
                 else None
             ),
             groq_stt_model=source.get("GROQ_STT_MODEL", "whisper-large-v3-turbo").strip(),
-            groq_interim_interval_seconds=parse_float("GROQ_INTERIM_INTERVAL_SECONDS", 1.2),
+            groq_interim_interval_seconds=parse_float("GROQ_INTERIM_INTERVAL_SECONDS", 3.0),
             backchannel_enabled=parse_bool("BACKCHANNEL_ENABLED", False),
             backchannel_text=source.get("BACKCHANNEL_TEXT", "mm-hmm").strip(),
             backchannel_delay_seconds=parse_float("BACKCHANNEL_DELAY_SECONDS", 1.4),
@@ -222,6 +226,12 @@ class Settings(BaseModel):
             jev_timeout_seconds=parse_float("JEV_TIMEOUT_SECONDS", 2.5),
             jev_min_interval_seconds=parse_float("JEV_MIN_INTERVAL_SECONDS", 0.75),
             jev_approval_threshold=parse_float("JEV_APPROVAL_THRESHOLD", 0.55),
+            jev_helpful_threshold=parse_float("JEV_HELPFUL_THRESHOLD", 0.50),
+            jev_helpful_threshold_semantic=parse_float("JEV_HELPFUL_THRESHOLD_SEMANTIC", 0.52),
+            jev_expects_answer_ceiling=parse_float("JEV_EXPECTS_ANSWER_CEILING", 0.60),
+            jev_expects_answer_ceiling_semantic=parse_float(
+                "JEV_EXPECTS_ANSWER_CEILING_SEMANTIC", 0.50
+            ),
             llm_provider=llm_provider,
             gemini_api_key=SecretStr(required["GEMINI_API_KEY"])
             if required.get("GEMINI_API_KEY")
