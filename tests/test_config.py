@@ -142,3 +142,45 @@ def test_api_settings_validates_port() -> None:
     )
     with pytest.raises(ConfigurationError, match="API_PORT must be a number"):
         ApiSettings.from_env({"API_PORT": "not-a-port"})
+
+
+def test_gemini_key_is_kept_when_only_speech_uses_gemini() -> None:
+    """The Gemini key is optional for the LLM but required by its TTS adapter.
+
+    Deriving it from the LLM's requirements dropped it for any other LLM provider,
+    so groq LLM + gemini speech could not start at all.
+    """
+
+    settings = Settings.from_env(
+        {
+            "LIVEKIT_URL": "wss://example.livekit.cloud",
+            "LIVEKIT_API_KEY": "lk_api_key",
+            "LIVEKIT_API_SECRET": "lk_api_secret",
+            "GROQ_API_KEY": "groq_api_key",
+            "GEMINI_API_KEY": "gemini_api_key",
+            "LLM_PROVIDER": "groq",
+            "TTS_PROVIDER": "gemini_tts",
+        }
+    )
+
+    assert settings.gemini_api_key is not None
+    assert settings.gemini_api_key.get_secret_value() == "gemini_api_key"
+
+
+def test_llm_and_speech_can_use_different_providers() -> None:
+    from blue_machines_baseline.agent import create_llm, create_tts
+
+    settings = Settings.from_env(
+        {
+            "LIVEKIT_URL": "wss://example.livekit.cloud",
+            "LIVEKIT_API_KEY": "lk_api_key",
+            "LIVEKIT_API_SECRET": "lk_api_secret",
+            "GROQ_API_KEY": "groq_api_key",
+            "GEMINI_API_KEY": "gemini_api_key",
+            "LLM_PROVIDER": "groq",
+            "TTS_PROVIDER": "gemini_tts",
+        }
+    )
+
+    assert create_llm(settings).model == "openai/gpt-oss-120b"
+    assert create_tts(settings).model == "gemini-3.8-flash-tts"

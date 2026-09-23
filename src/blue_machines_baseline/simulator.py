@@ -24,6 +24,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import audioop
+import contextlib
 import io
 import json
 import logging
@@ -496,8 +497,17 @@ async def drive_one(
             elapsed_seconds=round(time.monotonic() - started, 2),
         )
     finally:
+        # Teardown order matters: releasing the audio source and letting the
+        # drains observe the closed stream comes before disconnecting the room.
+        # Tearing a live capture down together with the transport is what aborts
+        # the Rust side of the SDK ("panic in a function that cannot unwind").
+        with contextlib.suppress(Exception):
+            await source.aclose()
         for task in tasks:
             task.cancel()
+        if tasks:
+            with contextlib.suppress(Exception):
+                await asyncio.wait_for(asyncio.gather(*tasks, return_exceptions=True), timeout=2.0)
         await room.disconnect()
         await _delete_room(settings, room_name)
 

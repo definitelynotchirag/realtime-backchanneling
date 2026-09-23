@@ -235,9 +235,15 @@ class Settings(BaseModel):
                 "JEV_EXPECTS_ANSWER_CEILING_SEMANTIC", 0.50
             ),
             llm_provider=llm_provider,
-            gemini_api_key=SecretStr(required["GEMINI_API_KEY"])
-            if required.get("GEMINI_API_KEY")
-            else None,
+            # Read from the environment, not from `required`: the key is only
+            # required when Gemini is the *LLM*, but the Gemini TTS adapter also
+            # needs it. Deriving it from `required` silently dropped it for any
+            # other LLM provider, so groq LLM + gemini speech failed to start.
+            gemini_api_key=(
+                SecretStr(source["GEMINI_API_KEY"].strip())
+                if source.get("GEMINI_API_KEY", "").strip()
+                else None
+            ),
             gemini_model=source.get("GEMINI_MODEL", "gemini-2.5-flash").strip(),
             groq_llm_model=source.get("GROQ_LLM_MODEL", "openai/gpt-oss-120b").strip(),
             openrouter_api_key=(
