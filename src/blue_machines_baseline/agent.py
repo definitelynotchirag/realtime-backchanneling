@@ -17,7 +17,7 @@ from livekit.agents import Agent, AgentServer, AgentSession, JobContext, cli, in
 from livekit.plugins import elevenlabs, google, groq, openai, silero
 from typesafe_sdk import AsyncTypeSafeClient
 
-from . import deepgram_tts, gemini_tts, groq_interim_stt, openrouter_tts
+from . import deepgram_stt, deepgram_tts, gemini_tts, groq_interim_stt, openrouter_tts
 from .backchannel import BackchannelEngine
 from .benchmark import parse_run_context
 from .config import JEV_INTERIM_STT_ERROR, ConfigurationError, Settings
@@ -106,7 +106,9 @@ def _metric_summary(metric: Any) -> dict[str, Any]:
     return result
 
 
-def create_stt(settings: Settings) -> inference.STT | groq.STT | groq_interim_stt.STT:
+def create_stt(
+    settings: Settings,
+) -> inference.STT | groq.STT | groq_interim_stt.STT | deepgram_stt.STT:
     """Create streaming LiveKit STT, with Groq retained as a final-only fallback."""
 
     if settings.stt_provider == "livekit_inference":
@@ -121,6 +123,16 @@ def create_stt(settings: Settings) -> inference.STT | groq.STT | groq_interim_st
         raise ConfigurationError(
             f"GROQ_API_KEY is required when STT_PROVIDER={settings.stt_provider}"
         )
+    if settings.stt_provider == "deepgram":
+        if settings.deepgram_api_key is None:
+            raise ConfigurationError("DEEPGRAM_API_KEY is required when STT_PROVIDER=deepgram")
+        return deepgram_stt.STT(
+            model=settings.deepgram_stt_model,
+            language=settings.deepgram_stt_language,
+            endpointing_ms=settings.deepgram_stt_endpointing_ms,
+            api_key=settings.deepgram_api_key.get_secret_value(),
+        )
+
     if settings.stt_provider == "groq_interim":
         return groq_interim_stt.STT(
             model=settings.groq_stt_model,

@@ -9,6 +9,7 @@ description = "Phase 1 LiveKit voice-agent baseline for the Blue Machines assign
 readme = "README.md"
 requires-python = ">=3.12,<3.13"
 dependencies = [
+    "aiohttp==3.14.3",
     "fastapi==0.141.1",
     "livekit-agents==1.8.2",
     "livekit-plugins-elevenlabs==1.8.2",

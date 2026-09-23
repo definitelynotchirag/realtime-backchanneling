@@ -131,6 +131,7 @@ name = "blue-machines-baseline"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "aiohttp" },
     { name = "fastapi" },
     { name = "livekit-agents" },
     { name = "livekit-plugins-elevenlabs" },
@@ -152,6 +153,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "aiohttp", specifier = "==3.14.3" },
     { name = "fastapi", specifier = "==0.141.1" },
     { name = "livekit-agents", specifier = "==1.8.2" },
     { name = "livekit-plugins-elevenlabs", specifier = "==1.8.2" },

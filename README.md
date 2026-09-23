@@ -40,14 +40,18 @@ offline policy replay, the comparison table, and the visual run timeline.
   detector running on the user's audio, with an automatic final-transcript fallback. Each
   `eot_prediction` event names the model that answered (`turn-detector-v1-mini` locally,
   `turn-detector-v1` when the gateway serves it).
-- `STT_PROVIDER=groq_interim`: interim transcripts from a batch-only provider, so the Jev
-  semantic policy can run without a streaming STT subscription. It segments turns with a
-  VAD (LiveKit's pipeline forwards audio continuously and never flushes one stream per
-  turn) and takes interim snapshots inside each segment - seven interims and a final over a
-  real 8.8 s utterance. A per-process request budget keeps it under the provider's
-  requests-per-minute limit, spending the budget on interims only while finals are
-  guaranteed: dropping an interim costs a little policy context, dropping a final would
-  leave the user's turn open.
+- Speech-to-text comes in two flavours. `STT_PROVIDER=deepgram` uses Deepgram's live
+  websocket: native interim transcripts while the user speaks, finals that land *during*
+  the turn, and an end-of-speech marker for the turn boundary - measured on a real
+  utterance, ten interims and three finals, the first final arriving while the user was
+  still talking. `STT_PROVIDER=groq_interim` reaches the same place from a batch-only
+  provider: it segments turns with a VAD (the pipeline forwards audio continuously and
+  never flushes one stream per turn) and snapshots interims inside each segment, with a
+  per-process request budget that spends on interims only while finals stay guaranteed -
+  dropping an interim costs a little policy context, dropping a final would leave the
+  turn open. Both satisfy Jev mode's requirement for interim transcripts; plain
+  `STT_PROVIDER=groq` does not, and the API refuses that combination before a room is
+  created.
 - FastAPI `/health`, `/events`, `/benchmark/report`, `/benchmark/replay`, and
   `/livekit/token` endpoints.
 - Explicit tests for cooldown, EOT suppression, failed TTS, rapid transitions, and

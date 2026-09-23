@@ -54,7 +54,7 @@ def test_settings_loads_optional_jev_configuration() -> None:
 
     assert settings.typesafe_api_key == SecretStr("jev_api_key")
     assert settings.jev_model == "jev-latest"
-    assert settings.jev_timeout_seconds == 2.5
+    assert settings.jev_timeout_seconds == 4.0
 
 
 def test_settings_reports_all_missing_required_variables() -> None:

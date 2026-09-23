@@ -3,7 +3,13 @@ import pickle
 from livekit.agents import inference
 from livekit.plugins import elevenlabs, google, groq
 
-from blue_machines_baseline import deepgram_tts, gemini_tts, groq_interim_stt, openrouter_tts
+from blue_machines_baseline import (
+    deepgram_stt,
+    deepgram_tts,
+    gemini_tts,
+    groq_interim_stt,
+    openrouter_tts,
+)
 from blue_machines_baseline.agent import create_llm, create_stt, create_tts, entrypoint
 from blue_machines_baseline.config import Settings
 
@@ -78,6 +84,16 @@ def test_provider_factory_can_select_elevenlabs_tts() -> None:
 
 def test_room_entrypoint_is_pickle_safe_for_livekit_job_processes() -> None:
     assert pickle.loads(pickle.dumps(entrypoint)) is entrypoint
+
+
+def test_deepgram_stt_streams_with_interims() -> None:
+    settings = settings_for_provider_tests(STT_PROVIDER="deepgram")
+
+    stt = create_stt(settings)
+
+    assert isinstance(stt, deepgram_stt.STT)
+    assert stt.capabilities.streaming is True
+    assert stt.capabilities.interim_results is True  # what Jev mode needs
 
 
 def test_groq_stt_is_batch_only() -> None:

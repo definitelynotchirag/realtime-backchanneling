@@ -20,7 +20,7 @@ TTSProvider = Literal[
     "livekit_inference", "elevenlabs", "gemini_tts", "groq_tts", "openrouter_tts", "deepgram_tts"
 ]
 LLMProvider = Literal["gemini", "openrouter", "groq"]
-STTProvider = Literal["livekit_inference", "groq", "groq_interim"]
+STTProvider = Literal["livekit_inference", "groq", "groq_interim", "deepgram"]
 EotDetector = Literal["livekit_inference", "final_transcript"]
 
 BATCH_ONLY_STT_PROVIDERS = frozenset({"groq"})
@@ -57,6 +57,9 @@ class Settings(BaseModel):
     livekit_stt_model: str = "google/gemini-3.5-transcribe-live"
     groq_api_key: SecretStr | None = None
     groq_stt_model: str = "whisper-large-v3-turbo"
+    deepgram_stt_model: str = "nova-3"
+    deepgram_stt_language: str = "en"
+    deepgram_stt_endpointing_ms: int = 300
     groq_interim_interval_seconds: float = 3.0
     backchannel_enabled: bool = False
     backchannel_text: str = "mm-hmm"
@@ -66,8 +69,11 @@ class Settings(BaseModel):
     eot_detector: EotDetector = "livekit_inference"
     typesafe_api_key: SecretStr | None = None
     jev_model: str = "jev-latest"
-    jev_timeout_seconds: float = 2.5
-    jev_min_interval_seconds: float = 0.75
+    # The classifier's own latency is usually 0.4-0.9 s but occasionally spikes past
+    # 2.5 s; a timeout means silence, so the limit is generous and the cadence slower
+    # than the interims it is fed (Deepgram delivers them about once a second).
+    jev_timeout_seconds: float = 4.0
+    jev_min_interval_seconds: float = 1.5
     jev_approval_threshold: float = 0.55
     jev_helpful_threshold: float = 0.50
     jev_helpful_threshold_semantic: float = 0.52
@@ -116,9 +122,11 @@ class Settings(BaseModel):
         stt_provider = source.get("STT_PROVIDER", "livekit_inference").strip().lower()
         if stt_provider in {"groq", "groq_interim"}:
             required["GROQ_API_KEY"] = source.get("GROQ_API_KEY", "").strip()
+        elif stt_provider == "deepgram":
+            required["DEEPGRAM_API_KEY"] = source.get("DEEPGRAM_API_KEY", "").strip()
         elif stt_provider != "livekit_inference":
             raise ConfigurationError(
-                "STT_PROVIDER must be one of: livekit_inference, groq, groq_interim"
+                "STT_PROVIDER must be one of: livekit_inference, groq, groq_interim, deepgram"
             )
         llm_provider = source.get("LLM_PROVIDER", "gemini").strip().lower()
         if llm_provider == "gemini":
@@ -189,6 +197,15 @@ class Settings(BaseModel):
                 "EOT_DETECTOR must be one of: livekit_inference, final_transcript"
             )
 
+        def parse_int(name: str, default: int) -> int:
+            try:
+                value = int(source.get(name, str(default)))
+            except ValueError as exc:
+                raise ConfigurationError(f"{name} must be a whole number") from exc
+            if value <= 0:
+                raise ConfigurationError(f"{name} must be positive")
+            return value
+
         def parse_bool(name: str, default: bool) -> bool:
             value = source.get(name, str(default)).strip().lower()
             if value not in {"true", "false", "1", "0", "yes", "no"}:
@@ -225,6 +242,9 @@ class Settings(BaseModel):
                 else None
             ),
             groq_stt_model=source.get("GROQ_STT_MODEL", "whisper-large-v3-turbo").strip(),
+            deepgram_stt_model=source.get("DEEPGRAM_STT_MODEL", "nova-3").strip(),
+            deepgram_stt_language=source.get("DEEPGRAM_STT_LANGUAGE", "en").strip(),
+            deepgram_stt_endpointing_ms=parse_int("DEEPGRAM_STT_ENDPOINTING_MS", 300),
             groq_interim_interval_seconds=parse_float("GROQ_INTERIM_INTERVAL_SECONDS", 3.0),
             backchannel_enabled=parse_bool("BACKCHANNEL_ENABLED", False),
             backchannel_text=source.get("BACKCHANNEL_TEXT", "mm-hmm").strip(),
@@ -238,8 +258,8 @@ class Settings(BaseModel):
                 else None
             ),
             jev_model=source.get("JEV_MODEL", "jev-latest").strip(),
-            jev_timeout_seconds=parse_float("JEV_TIMEOUT_SECONDS", 2.5),
-            jev_min_interval_seconds=parse_float("JEV_MIN_INTERVAL_SECONDS", 0.75),
+            jev_timeout_seconds=parse_float("JEV_TIMEOUT_SECONDS", 4.0),
+            jev_min_interval_seconds=parse_float("JEV_MIN_INTERVAL_SECONDS", 1.5),
             jev_approval_threshold=parse_float("JEV_APPROVAL_THRESHOLD", 0.55),
             jev_helpful_threshold=parse_float("JEV_HELPFUL_THRESHOLD", 0.50),
             jev_helpful_threshold_semantic=parse_float("JEV_HELPFUL_THRESHOLD_SEMANTIC", 0.52),
@@ -298,7 +318,8 @@ class Settings(BaseModel):
             ).expanduser(),
             agent_instructions=source.get(
                 "AGENT_INSTRUCTIONS",
-                "You are a friendly voice assistant. Keep spoken answers concise and natural.",
+                "You are a friendly voice assistant. Reply in one short sentence of at most"
+                " ten words.",
             ).strip(),
             event_log_path=event_log_path,
         )
