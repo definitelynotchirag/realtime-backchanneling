@@ -230,7 +230,10 @@ Three limits are stated rather than hidden:
    transcripts while the user speaks (verified: seven interims during an 8.8 s utterance).
    A real Jev run produces the full semantic path - interim transcript, `jev_request_started`,
    `backchannel_semantic_approved`, `jev_decision {approved: true, confidence: 0.92}`, then a
-   638 ms cue - but including it in the sweep needs speech budget for two more arms.
+   638 ms cue - and a Jev room now also closes each turn with a final transcript and an
+   answered reply (`answered=yes`, response 661 ms), which the first version of that adapter
+   could not do: it only finalized on flush, and the pipeline never flushes per turn.
+   Including Jev in the sweep still needs speech budget for two more arms.
 3. **The TTS used for the sweep is non-streaming**, so the agent cannot start speaking
    until the whole utterance is synthesised (~2.8 s, measured). That cost lands on both
    arms equally, which keeps the *comparison* fair while inflating absolute latency. A

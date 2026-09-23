@@ -19,6 +19,7 @@ is a semantic policy that can run on a provider that does not stream natively.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import io
 import json
 import logging
@@ -27,10 +28,11 @@ import urllib.error
 import urllib.request
 import uuid
 import wave
+from collections.abc import Callable
 from dataclasses import dataclass
 
 from livekit import rtc
-from livekit.agents import stt
+from livekit.agents import stt, vad
 from livekit.agents.types import DEFAULT_API_CONNECT_OPTIONS, APIConnectOptions
 from livekit.agents.utils import AudioBuffer
 
@@ -40,8 +42,16 @@ API_URL = "https://api.groq.com/openai/v1/audio/transcriptions"
 REQUEST_TIMEOUT_SECONDS: float = 30.0
 SAMPLE_WIDTH_BYTES = 2
 USER_AGENT = "blue-machines-baseline/0.1 (LiveKit backchannel benchmark)"
-DEFAULT_INTERIM_INTERVAL_SECONDS: float = 1.2
-"""How much audio to accumulate before asking for a partial transcript."""
+DEFAULT_INTERIM_INTERVAL_SECONDS: float = 3.0
+"""How much audio to accumulate before asking for a partial transcript.
+
+Groq allows 20 requests per minute on the free tier, so a cadence much faster
+than this spends the whole budget on interims; the final transcript of every turn
+must always fit inside it.
+"""
+
+DEFAULT_MAX_REQUESTS_PER_MINUTE: int = 18
+"""Self-imposed ceiling, deliberately below Groq's 20 RPM for the free tier."""
 
 MIN_SEGMENT_SECONDS: float = 0.3
 """Segments shorter than this are not worth a provider request."""
@@ -122,6 +132,20 @@ def _post_transcription(
     return payload if isinstance(payload, dict) else {}
 
 
+_SHARED_VAD: list[vad.VAD] = []
+"""One silero VAD per process; loading it per stream would be wasteful."""
+
+
+def _default_vad() -> vad.VAD:
+    """Return the process-wide VAD, loading silero on first use."""
+
+    if not _SHARED_VAD:
+        from livekit.plugins import silero
+
+        _SHARED_VAD.append(silero.VAD.load())
+    return _SHARED_VAD[0]
+
+
 @dataclass(frozen=True)
 class _Options:
     model: str
@@ -129,10 +153,34 @@ class _Options:
     api_key: str
     http_timeout: float
     interim_interval_seconds: float
+    max_requests_per_minute: int
+
+
+class _RequestBudget:
+    """Sliding-window limiter shared by every stream of one process.
+
+    Interim snapshots are optional - skipping one costs a little context for the
+    semantic policy - while the final transcript of a turn is not. Spending the
+    provider's per-minute budget on interims would starve the finals, so requests
+    are admitted only while the window has room.
+    """
+
+    def __init__(self, max_per_minute: int, clock: Callable[[], float] = time.monotonic) -> None:
+        self._max = max(1, max_per_minute)
+        self._clock = clock
+        self._stamps: list[float] = []
+
+    def allow(self) -> bool:
+        now = self._clock()
+        self._stamps = [stamp for stamp in self._stamps if now - stamp < 60.0]
+        if len(self._stamps) >= self._max:
+            return False
+        self._stamps.append(now)
+        return True
 
 
 class STT(stt.STT):
-    """Batch transcription that also emits interim transcripts on a cadence."""
+    """Batch transcription with VAD segmentation and interim snapshots."""
 
     def __init__(
         self,
@@ -142,17 +190,26 @@ class STT(stt.STT):
         language: str | None = "en",
         interim_interval_seconds: float = DEFAULT_INTERIM_INTERVAL_SECONDS,
         http_timeout: float = REQUEST_TIMEOUT_SECONDS,
+        max_requests_per_minute: int = DEFAULT_MAX_REQUESTS_PER_MINUTE,
+        request_budget: _RequestBudget | None = None,
+        vad: vad.VAD | None = None,
     ) -> None:
         super().__init__(capabilities=stt.STTCapabilities(streaming=True, interim_results=True))
         if not api_key:
             raise ValueError("GROQ_API_KEY is required for the groq_interim provider")
+        # The pipeline forwards frames continuously and never flushes this stream
+        # at a turn boundary, so turns are segmented with a VAD - the same way the
+        # SDK's own StreamAdapter segments a batch provider.
+        self._vad = vad or _default_vad()
         self._opts = _Options(
             model=model,
             language=language,
             api_key=api_key,
             http_timeout=http_timeout,
             interim_interval_seconds=max(0.4, interim_interval_seconds),
+            max_requests_per_minute=max_requests_per_minute,
         )
+        self._budget = request_budget or _RequestBudget(max_requests_per_minute)
 
     @property
     def model(self) -> str:
@@ -162,12 +219,20 @@ class STT(stt.STT):
     def provider(self) -> str:
         return "groq"
 
+    @property
+    def vad(self) -> vad.VAD:
+        """The VAD used to segment turns for this stream."""
+
+        return self._vad
+
     def stream(
         self,
         *,
         conn_options: APIConnectOptions = DEFAULT_API_CONNECT_OPTIONS,
     ) -> stt.RecognizeStream:
-        return _InterimStream(stt=self, opts=self._opts, conn_options=conn_options)
+        return _InterimStream(
+            stt=self, opts=self._opts, conn_options=conn_options, vad_stream=self._vad
+        )
 
     async def _recognize_impl(
         self,
@@ -203,10 +268,18 @@ class STT(stt.STT):
 class _InterimStream(stt.RecognizeStream):
     """Turn audio into interim transcripts, then one final transcript."""
 
-    def __init__(self, *, stt: STT, opts: _Options, conn_options: APIConnectOptions) -> None:
+    def __init__(
+        self,
+        *,
+        stt: STT,
+        opts: _Options,
+        conn_options: APIConnectOptions,
+        vad_stream: vad.VAD,
+    ) -> None:
         super().__init__(stt=stt, conn_options=conn_options)
         self._stt = stt
         self._opts = opts
+        self._vad = vad_stream
 
     def _emit(self, event_type: stt.SpeechEventType, text: str, duration: float) -> None:
         """Emit a transcript event.
@@ -239,59 +312,96 @@ class _InterimStream(stt.RecognizeStream):
         return sum(frame.samples_per_channel / max(1, frame.sample_rate) for frame in frames)
 
     async def _run(self) -> None:
+        """Segment with VAD, snapshot interims while speaking, finalize per turn.
+
+        The pipeline forwards frames continuously and never flushes this stream at
+        a turn boundary (``Agent.stt_node`` only pushes frames), so segmenting
+        cannot rely on ``flush()``. It follows ``stt.StreamAdapter``'s approach
+        instead: run a VAD over the forwarded audio and treat each end-of-speech
+        as the end of a turn, which is what produces a final transcript per turn.
+        Interims are snapshots taken during the segment - the part StreamAdapter
+        cannot do, and the reason this adapter exists at all.
+        """
+
+        vad_stream = self._vad.stream()
         segment: list[rtc.AudioFrame] = []
         speaking = False
         last_interim_at = time.monotonic()
+        interim_task: asyncio.Task[None] | None = None
 
-        async for data in self._input_ch:
-            if isinstance(data, self._FlushSentinel):
-                if segment:
-                    audio, duration = wav_bytes_from_frames(segment)
-                    try:
-                        text = await self._stt._transcribe(audio)
-                    except GroqInterimSTTError as exc:
-                        # A failed final still ends the segment: the pipeline must
-                        # not be left waiting for a transcript that will not come.
-                        logger.warning("final transcript failed: %s", exc)
-                        text = ""
-                    self._emit_marker(stt.SpeechEventType.END_OF_SPEECH, duration)
-                    self._emit(stt.SpeechEventType.FINAL_TRANSCRIPT, text, duration)
-                    segment = []
-                speaking = False
-                last_interim_at = time.monotonic()
-                continue
-
-            if not isinstance(data, rtc.AudioFrame):
-                continue
-            segment.append(data)
-            if not speaking:
-                speaking = True
-                last_interim_at = time.monotonic()
-                self._emit_marker(stt.SpeechEventType.START_OF_SPEECH)
-                continue
-
-            elapsed = time.monotonic() - last_interim_at
-            if elapsed < self._opts.interim_interval_seconds:
-                continue
-            duration = self._duration(segment)
-            if duration < MIN_SEGMENT_SECONDS:
-                continue
-            last_interim_at = time.monotonic()
-            audio, duration = wav_bytes_from_frames(segment)
+        async def emit_interim(frames: list[rtc.AudioFrame]) -> None:
+            audio, duration = wav_bytes_from_frames(frames)
             try:
                 text = await self._stt._transcribe(audio)
             except GroqInterimSTTError as exc:
+                # Dropping an interim is cheap; the next snapshot covers the same
+                # speech plus more, and the final transcript is unaffected.
                 logger.debug("interim transcript failed: %s", exc)
-                continue
+                return
             self._emit(stt.SpeechEventType.INTERIM_TRANSCRIPT, text, duration)
 
-        # The input channel closed without a flush: emit the tail so a turn that
-        # ends by teardown still produces a transcript.
-        if segment:
-            audio, duration = wav_bytes_from_frames(segment)
-            try:
-                text = await self._stt._transcribe(audio)
-            except GroqInterimSTTError as exc:
-                logger.debug("trailing transcript failed: %s", exc)
-                text = ""
-            self._emit(stt.SpeechEventType.FINAL_TRANSCRIPT, text, duration)
+        async def forward_input() -> None:
+            nonlocal last_interim_at, interim_task
+            async for item in self._input_ch:
+                if isinstance(item, self._FlushSentinel):
+                    vad_stream.flush()
+                    continue
+                vad_stream.push_frame(item)
+                if not speaking:
+                    continue
+                segment.append(item)
+                if interim_task is not None and not interim_task.done():
+                    continue
+                if time.monotonic() - last_interim_at < self._opts.interim_interval_seconds:
+                    continue
+                if self._duration(segment) < MIN_SEGMENT_SECONDS:
+                    continue
+                if not self._stt._budget.allow():
+                    continue
+                last_interim_at = time.monotonic()
+                # Transcription happens in the background so forwarding audio is
+                # never blocked by a provider round trip.
+                interim_task = asyncio.create_task(emit_interim(list(segment)))
+            vad_stream.end_input()
+
+        async def recognize() -> None:
+            nonlocal segment, speaking, last_interim_at
+            async for event in vad_stream:
+                if event.type == vad.VADEventType.START_OF_SPEECH:
+                    speaking = True
+                    segment = []
+                    last_interim_at = time.monotonic()
+                    self._emit_marker(stt.SpeechEventType.START_OF_SPEECH)
+                elif event.type == vad.VADEventType.END_OF_SPEECH:
+                    speaking = False
+                    frames = list(event.frames) or segment
+                    segment = []
+                    duration = self._duration(frames)
+                    self._emit_marker(stt.SpeechEventType.END_OF_SPEECH, duration)
+                    text = ""
+                    if frames:
+                        audio, _ = wav_bytes_from_frames(frames)
+                        try:
+                            text = await self._stt._transcribe(audio)
+                        except GroqInterimSTTError as exc:
+                            logger.warning("final transcript failed: %s", exc)
+                    # Emitted even when empty: the turn must close either way.
+                    self._emit(stt.SpeechEventType.FINAL_TRANSCRIPT, text, duration)
+
+        tasks = [
+            asyncio.create_task(forward_input(), name="groq_interim_forward"),
+            asyncio.create_task(recognize(), name="groq_interim_recognize"),
+        ]
+        try:
+            await asyncio.gather(*tasks)
+        finally:
+            if interim_task is not None and not interim_task.done():
+                interim_task.cancel()
+                with contextlib.suppress(asyncio.CancelledError):
+                    await interim_task
+            for task in tasks:
+                task.cancel()
+            for task in tasks:
+                with contextlib.suppress(asyncio.CancelledError):
+                    await task
+            await vad_stream.aclose()

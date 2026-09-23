@@ -117,7 +117,21 @@ def _load_report() -> dict[str, Any]:
 
 @app.get("/health")
 def health() -> dict[str, str]:
-    return {"status": "ok", "service": "blue-machines-baseline"}
+    """Health plus the providers this process believes are configured.
+
+    The Jev pre-check reads this process's STT_PROVIDER, so a worker started with
+    a different value is a split brain: the API would allow a mode the worker
+    refuses. Reporting the effective settings makes that mismatch one request away
+    from being obvious instead of a silent empty room.
+    """
+
+    return {
+        "status": "ok",
+        "service": "blue-machines-baseline",
+        "stt_provider": os.environ.get("STT_PROVIDER", "livekit_inference").strip().lower(),
+        "llm_provider": os.environ.get("LLM_PROVIDER", "gemini").strip().lower(),
+        "tts_provider": os.environ.get("TTS_PROVIDER", "livekit_inference").strip().lower(),
+    }
 
 
 @app.get("/events")

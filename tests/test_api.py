@@ -5,10 +5,16 @@ from fastapi.testclient import TestClient
 from blue_machines_baseline.api import app
 
 
-def test_health_endpoint_is_credentials_free() -> None:
+def test_health_endpoint_is_credentials_free(monkeypatch) -> None:
+    monkeypatch.setenv("STT_PROVIDER", "groq_interim")
+    monkeypatch.setenv("TTS_PROVIDER", "groq_tts")
     response = TestClient(app).get("/health")
 
     assert response.status_code == 200
+    # The Jev pre-check reads this process's own env, so the effective providers
+    # must be visible: a worker configured differently is a silent split brain.
+    assert response.json()["stt_provider"] == "groq_interim"
+    assert response.json()["tts_provider"] == "groq_tts"
     assert response.json()["status"] == "ok"
 
 

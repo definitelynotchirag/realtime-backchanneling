@@ -54,6 +54,7 @@ type BenchmarkReport = {
   replay_observation?: BenchmarkReport;
 };
 type LiveKitToken = { server_url: string; participant_token: string; room_name: string; run_id: string };
+type ApiFailure = { error?: string; detail?: string };
 
 type IconProps = { name: IconName; size?: number };
 function Icon({ name, size = 15 }: IconProps) {
@@ -514,8 +515,10 @@ export default function Workspace() {
     setLiveMessage("Requesting fresh room and agent dispatch...");
     try {
       const response = await fetch("/api/livekit/token", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ scenario_id: scenario.id, mode }), cache: "no-store" });
-      const payload = await response.json() as Partial<LiveKitToken> & { error?: string };
-      if (!response.ok || !payload.server_url || !payload.participant_token || !payload.room_name) throw new Error(payload.error || "LiveKit token endpoint returned an invalid response.");
+      const payload = await response.json() as Partial<LiveKitToken> & ApiFailure;
+      // FastAPI reports failures as `detail`; the proxy passes it through unchanged.
+      const failure = payload.detail || payload.error;
+      if (!response.ok || !payload.server_url || !payload.participant_token || !payload.room_name) throw new Error(failure || `LiveKit token request failed (HTTP ${response.status}).`);
       const room = new Room({ adaptiveStream: true, dynacast: true });
       roomRef.current = room;
       room.on(RoomEvent.TrackSubscribed, (track: RemoteTrack) => {

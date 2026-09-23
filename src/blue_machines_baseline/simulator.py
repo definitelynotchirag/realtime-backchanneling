@@ -462,13 +462,16 @@ async def drive_one(
             ):
                 break
 
+        # Opened before the clip plays: a fast answer can start before the first
+        # poll, and a tail opened afterwards would miss that event entirely and
+        # report a successful run as unanswered.
+        tail = EventLogTail(settings.event_log_path)
         logger.info("playing %s into %s (%.2fs)", clip.path.name, room_name, clip.duration_seconds)
         for frame in frames:
             await source.capture_frame(frame)
             await asyncio.sleep(FRAME_MS / 1000)
         playback_finished_at = time.monotonic()
 
-        tail = EventLogTail(settings.event_log_path)
         deadline = playback_finished_at + max_wait
         while time.monotonic() < deadline:
             await asyncio.sleep(0.2)

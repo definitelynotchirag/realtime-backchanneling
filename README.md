@@ -41,8 +41,13 @@ offline policy replay, the comparison table, and the visual run timeline.
   `eot_prediction` event names the model that answered (`turn-detector-v1-mini` locally,
   `turn-detector-v1` when the gateway serves it).
 - `STT_PROVIDER=groq_interim`: interim transcripts from a batch-only provider, so the Jev
-  semantic policy can run without a streaming STT subscription. Measured on a real turn:
-  seven interim transcripts during an 8.8 s utterance, then the final.
+  semantic policy can run without a streaming STT subscription. It segments turns with a
+  VAD (LiveKit's pipeline forwards audio continuously and never flushes one stream per
+  turn) and takes interim snapshots inside each segment - seven interims and a final over a
+  real 8.8 s utterance. A per-process request budget keeps it under the provider's
+  requests-per-minute limit, spending the budget on interims only while finals are
+  guaranteed: dropping an interim costs a little policy context, dropping a final would
+  leave the user's turn open.
 - FastAPI `/health`, `/events`, `/benchmark/report`, `/benchmark/replay`, and
   `/livekit/token` endpoints.
 - Explicit tests for cooldown, EOT suppression, failed TTS, rapid transitions, and
