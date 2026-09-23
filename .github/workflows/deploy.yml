@@ -1,0 +1,71 @@
+name: Deploy
+
+# Continuous deployment for the live demo host.
+#
+# Runs on a self-hosted runner installed on the EC2 box itself (polls GitHub
+# over outbound HTTPS), so no inbound ports or SSH keys in GitHub are needed.
+# Triggered only by pushes to master (and manual dispatch) - never by fork
+# pull requests, which would otherwise run untrusted code on the host.
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: [self-hosted, linux, x64]
+    timeout-minutes: 20
+    steps:
+      - name: Update working tree
+        run: |
+          cd "$HOME/realtime-voice-chat"
+          git fetch --prune origin
+          git reset --hard origin/master
+          git log --oneline -1
+
+      - name: Sync Python environment
+        run: |
+          cd "$HOME/realtime-voice-chat"
+          "$HOME/.local/bin/uv" sync --extra dev
+
+      - name: Run tests
+        run: |
+          cd "$HOME/realtime-voice-chat"
+          "$HOME/.local/bin/uv" run pytest
+
+      - name: Build dashboard
+        run: |
+          cd "$HOME/realtime-voice-chat/dashboard"
+          npm ci --no-audit --no-fund
+          npm run build
+
+      - name: Sync service definitions and proxy config
+        run: |
+          cd "$HOME/realtime-voice-chat"
+          sudo install -m 644 deploy/Caddyfile /etc/caddy/Caddyfile
+          sudo /usr/local/bin/caddy validate --config /etc/caddy/Caddyfile
+          sudo install -m 644 deploy/blue-machines-api.service \
+            deploy/blue-machines-worker.service \
+            deploy/blue-machines-dashboard.service \
+            deploy/caddy.service /etc/systemd/system/
+          sudo systemctl daemon-reload
+
+      - name: Restart services
+        run: |
+          sudo systemctl reload caddy
+          sudo systemctl restart blue-machines-api blue-machines-dashboard blue-machines-worker
+
+      - name: Health check
+        run: |
+          sleep 5
+          curl -fsS http://127.0.0.1:8000/health
+          echo
+          curl -fsS -o /dev/null -w "dashboard: HTTP %{http_code}\n" http://127.0.0.1:3000/
+          for s in blue-machines-worker blue-machines-api blue-machines-dashboard caddy; do
+            printf "%-28s %s\n" "$s" "$(systemctl is-active $s)"
+          done
