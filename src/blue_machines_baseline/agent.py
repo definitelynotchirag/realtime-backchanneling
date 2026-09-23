@@ -23,15 +23,17 @@ from .backchannel import BackchannelEngine
 from .benchmark import parse_run_context
 from .config import JEV_INTERIM_STT_ERROR, ConfigurationError, Settings
 from .cue_audio import (
+    CueRotation,
     cue_phrases,
     cue_slug,
     read_cached_cues,
     synthesize_cue_frames,
     write_cached_cues,
 )
+from .cue_bank import CUE_BANK_BY_STYLE
 from .eot_detector import EotDetector
 from .events import EventRecorder
-from .jev import CUE_BANK_BY_STYLE, JevClassifier, JevTurnController
+from .jev import JevClassifier, JevTurnController
 
 logger = logging.getLogger("blue-machines-baseline")
 
@@ -541,10 +543,32 @@ def attach_backchanneling(
                 raise
         logger.debug("backchannel event: %s", name)
 
-    selected_cue = cue_state if cue_state is not None else {"text": settings.backchannel_text}
+    # A timer policy has no classifier to pick between the configured cues, so it cycles
+    # through them; repeating one sound for a whole conversation is what makes an
+    # acknowledgement sound mechanical. Only cues with audio are offered, so a cue never
+    # falls through to an on-demand synthesis that would cost a second instead of 20 ms.
+    timer_cues = [
+        text for text in settings.backchannel_texts if not cached_clips or text in cached_clips
+    ]
+    if cached_clips and len(timer_cues) < len(settings.backchannel_texts):
+        logger.warning(
+            "no cue audio for %s; those cues stay out of the timer policy's rotation",
+            ", ".join(text for text in settings.backchannel_texts if text not in cached_clips),
+        )
+    rotation = CueRotation(timer_cues or settings.backchannel_texts)
+    selected_cue = (
+        cue_state if cue_state is not None else {"text": rotation.current, "from_jev": False}
+    )
 
     def play_cue() -> Any:
-        cue_text = selected_cue["text"]
+        # Jev names the cue it earned by classifying the turn; the timer policy has
+        # nothing to consult, so it takes the next cue in its rotation.
+        if selected_cue.get("from_jev"):
+            cue_text = selected_cue["text"]
+            selected_cue["from_jev"] = False
+        else:
+            cue_text = rotation.next()
+            selected_cue["text"] = cue_text
         clip = cached_clips.get(cue_text) if cached_clips else None
         kwargs: dict[str, Any] = {
             # LiveKit delays interruptible speech until user silence. A backchannel
@@ -703,7 +727,8 @@ def attach_backchanneling(
             if controller is not None:
                 controller.set_enabled(selected_mode == "jev_backchannel")
             if selected_mode != "jev_backchannel":
-                selected_cue["text"] = settings.backchannel_text
+                selected_cue["text"] = rotation.current
+                selected_cue["from_jev"] = False
             engine.set_semantic_required(selected_mode == "jev_backchannel")
             engine.set_enabled(selected_mode != "baseline")
             record_event("experiment_mode_changed", mode=selected_mode)
@@ -786,7 +811,7 @@ async def entrypoint(ctx: JobContext) -> None:
     jev_controller: JevTurnController | None = None
     jev_controller_ref: list[JevTurnController] = []
     eot_detector_ref: list[EotDetector] = []
-    cue_state = {"text": settings.backchannel_text}
+    cue_state: dict[str, Any] = {"text": settings.backchannel_texts[0], "from_jev": False}
     # Rendered before the session starts, from the configured voice. Held in memory so
     # a cue is audible ~20 ms after the policy decides on one.
     cached_clips = await load_cue_clips(settings, recorder)
@@ -834,7 +859,7 @@ async def entrypoint(ctx: JobContext) -> None:
             on_event=lambda name, **data: (
                 recorder.record(name, **data) if not recorder.closed else None
             ),
-            on_cue_selected=lambda text: cue_state.__setitem__("text", text),
+            on_cue_selected=lambda text: cue_state.update({"text": text, "from_jev": True}),
         )
         jev_controller_ref.append(jev_controller)
     attach_instrumentation(session, recorder, backchannel)

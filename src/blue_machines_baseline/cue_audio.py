@@ -207,3 +207,33 @@ def write_cached_cues(cache_key: str, cues: Mapping[str, rtc.AudioFrame]) -> Non
                 output.writeframes(bytes(frame.data))
         except OSError as exc:  # a cache that cannot be written is not an error
             logger.warning("could not cache cue %s (%s)", path, exc)
+
+
+class CueRotation:
+    """Cycles a policy through the cues it is allowed to use.
+
+    The timer policy has no classifier, so without this it repeats one sound for a whole
+    session; the order is the configured order, and with two or more cues no cue repeats
+    back to back by construction.
+    """
+
+    def __init__(self, cues: Sequence[str]) -> None:
+        if not cues:
+            raise ValueError("a cue rotation needs at least one cue")
+        self._cues = tuple(cues)
+        self._index = 0
+
+    @property
+    def cues(self) -> tuple[str, ...]:
+        return self._cues
+
+    @property
+    def current(self) -> str:
+        return self._cues[self._index]
+
+    def next(self) -> str:
+        """The cue to play now; the following call returns the next one."""
+
+        chosen = self._cues[self._index]
+        self._index = (self._index + 1) % len(self._cues)
+        return chosen

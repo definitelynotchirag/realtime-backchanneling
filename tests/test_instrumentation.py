@@ -115,7 +115,7 @@ def test_final_public_transcript_suppresses_pending_backchannel() -> None:
         attach_backchanneling(
             session,
             SimpleNamespace(
-                backchannel_text="mm-hmm",
+                backchannel_texts=("mm-hmm",),
                 backchannel_delay_seconds=1.4,
                 backchannel_cooldown_seconds=4.0,
                 collision_window_seconds=0.5,
@@ -147,7 +147,7 @@ def test_final_streaming_segment_does_not_end_a_still_active_user_turn() -> None
         engine = attach_backchanneling(
             session,
             SimpleNamespace(
-                backchannel_text="mm-hmm",
+                backchannel_texts=("mm-hmm",),
                 backchannel_delay_seconds=0.01,
                 backchannel_cooldown_seconds=0.0,
                 collision_window_seconds=0.5,

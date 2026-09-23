@@ -201,3 +201,36 @@ def test_openrouter_key_is_kept_when_only_speech_uses_openrouter() -> None:
 
     assert settings.openrouter_api_key is not None
     assert settings.openrouter_api_key.get_secret_value() == "openrouter_api_key"
+
+
+def test_backchannel_text_takes_a_rotation_of_cues() -> None:
+    """A timer policy has no classifier, so it is configured with a rotation."""
+
+    values = valid_environment()
+    values["BACKCHANNEL_TEXT"] = " mm-hmm , mm , hmm "
+
+    assert Settings.from_env(values).backchannel_texts == ("mm-hmm", "mm", "hmm")
+
+
+def test_one_cue_stays_the_default() -> None:
+    """The shipped default, and what the measured sweeps ran with."""
+
+    assert Settings.from_env(valid_environment()).backchannel_texts == ("mm-hmm",)
+
+
+def test_only_bank_cues_can_be_configured() -> None:
+    """The bank is the safety review: a cue outside it was never vetted."""
+
+    values = valid_environment()
+    values["BACKCHANNEL_TEXT"] = "mm-hmm,yeah"
+
+    with pytest.raises(ConfigurationError, match="unknown cue"):
+        Settings.from_env(values)
+
+
+def test_an_empty_backchannel_text_is_rejected() -> None:
+    values = valid_environment()
+    values["BACKCHANNEL_TEXT"] = " , "
+
+    with pytest.raises(ConfigurationError, match="at least one cue"):
+        Settings.from_env(values)

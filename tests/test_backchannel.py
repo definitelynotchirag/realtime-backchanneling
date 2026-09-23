@@ -563,3 +563,86 @@ def test_cue_that_never_became_audible_reports_no_duration() -> None:
         await engine.aclose()
 
     asyncio.run(scenario())
+
+
+class RotatingSession(FakeSession):
+    """A session whose cues can finish, so several can play in one test."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.handles: list[CompletingHandle] = []
+
+    def say(self, text: str, **kwargs: object) -> CompletingHandle:
+        self.say_calls.append({"text": text, **kwargs})
+        handle = CompletingHandle()
+        self.handles.append(handle)
+        return handle
+
+
+def test_the_timer_policy_rotates_through_its_configured_cues() -> None:
+    """Without a classifier to choose, the timer policy still varies its cue.
+
+    One sound repeated for a whole conversation is what makes an acknowledgement
+    mechanical, so the configured cues are used in rotation.
+    """
+
+    async def scenario() -> None:
+        session = RotatingSession()
+        settings = Settings.from_env(
+            {
+                "LIVEKIT_URL": "wss://example.livekit.cloud",
+                "LIVEKIT_API_KEY": "lk_api_key",
+                "LIVEKIT_API_SECRET": "lk_api_secret",
+                "GROQ_API_KEY": "groq_api_key",
+                "GEMINI_API_KEY": "gemini_api_key",
+                "BACKCHANNEL_TEXT": "mm-hmm,mm,hmm",
+                "BACKCHANNEL_DELAY_SECONDS": "0.01",
+                "BACKCHANNEL_COOLDOWN_SECONDS": "0",
+            }
+        )
+        engine = attach_backchanneling(session, settings, EventRecorder())
+
+        for _ in range(3):
+            session.callbacks["user_state_changed"](SimpleNamespace(new_state="speaking"))
+            session.callbacks["agent_state_changed"](SimpleNamespace(new_state="thinking"))
+            await asyncio.sleep(0.03)
+            session.handles[-1].complete()
+            session.callbacks["user_state_changed"](SimpleNamespace(new_state="listening"))
+            session.callbacks["agent_state_changed"](SimpleNamespace(new_state="listening"))
+
+        assert [call["text"] for call in session.say_calls] == ["mm-hmm", "mm", "hmm"]
+        await engine.aclose()
+
+    asyncio.run(scenario())
+
+
+def test_a_timer_policy_with_one_cue_still_repeats_it() -> None:
+    """The default configuration and the committed evidence use a single cue."""
+
+    async def scenario() -> None:
+        session = RotatingSession()
+        settings = Settings.from_env(
+            {
+                "LIVEKIT_URL": "wss://example.livekit.cloud",
+                "LIVEKIT_API_KEY": "lk_api_key",
+                "LIVEKIT_API_SECRET": "lk_api_secret",
+                "GROQ_API_KEY": "groq_api_key",
+                "GEMINI_API_KEY": "gemini_api_key",
+                "BACKCHANNEL_DELAY_SECONDS": "0.01",
+                "BACKCHANNEL_COOLDOWN_SECONDS": "0",
+            }
+        )
+        engine = attach_backchanneling(session, settings, EventRecorder())
+
+        for _ in range(2):
+            session.callbacks["user_state_changed"](SimpleNamespace(new_state="speaking"))
+            session.callbacks["agent_state_changed"](SimpleNamespace(new_state="thinking"))
+            await asyncio.sleep(0.03)
+            session.handles[-1].complete()
+            session.callbacks["user_state_changed"](SimpleNamespace(new_state="listening"))
+            session.callbacks["agent_state_changed"](SimpleNamespace(new_state="listening"))
+
+        assert [call["text"] for call in session.say_calls] == ["mm-hmm", "mm-hmm"]
+        await engine.aclose()
+
+    asyncio.run(scenario())

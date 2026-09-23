@@ -12,6 +12,7 @@ from typing import Protocol
 from typesafe_sdk import Choice, Noul
 
 from .backchannel import BackchannelEngine
+from .cue_bank import CUE_BANK_BY_STYLE, CUE_TEXT_BY_STYLE
 
 
 class JevClient(Protocol):
@@ -32,28 +33,6 @@ class JevDecision:
     cue_style: str
     cue_text: str
 
-
-CUE_BANK_BY_STYLE: dict[str, tuple[str, ...]] = {
-    # Minimal continuers: they claim nothing beyond "I am still listening".
-    "neutral": ("mm-hmm", "mm", "hmm"),
-    # "Stay with me, keep going": used while the speaker lists or tells a story.
-    "following": ("uh-huh", "go on", "keep going"),
-    # Receipts: the speaker's explanation landed. They acknowledge comprehension,
-    # never agreement - "makes sense" is about the telling, not the claim.
-    "understanding": ("I see", "got it", "okay", "makes sense"),
-}
-"""Acknowledgements a human listener actually uses, grouped by what they claim.
-
-Ten cues, and the grouping is the safety property: phrases inside a group are
-interchangeable, so the policy can vary the wording without changing what is being
-asserted. Words that *agree* - "yes", "yeah", "right", "sure", "exactly", "of course" - stay
-out on purpose: a listener sound must not endorse a claim the agent has not checked,
-and "right" reads as "correct" often enough to be indistinguishable from agreement.
-"hmm" is included as a considering sound, not as doubt, which is the reading its flat
-delivery gets in the cue audio.
-"""
-
-CUE_TEXT_BY_STYLE = {style: phrases[0] for style, phrases in CUE_BANK_BY_STYLE.items()}
 
 SPEECH_TYPE_TO_CUE_STYLE = {
     "plain_continuation": "neutral",

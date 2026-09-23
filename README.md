@@ -128,6 +128,14 @@ indistinguishable from endorsement, and an acknowledgement must never endorse a 
 agent has not checked. Within a group the wording rotates and the same cue is never repeated
 back to back.
 
+In **timer mode** there is no classifier to choose between cues, so the policy plays the
+cues listed in `BACKCHANNEL_TEXT` in rotation (the default is a single cue, which is what
+the committed evidence ran with). Keep that list inside the neutral group: a scheduled
+`makes sense` would claim comprehension nothing checked, and a scheduled `go on` fired
+mid-sentence reads as an interruption rather than an invitation. Jev mode ignores the list -
+it names the cue it earned by classifying the turn, from the full bank. Only cues in the
+bank are accepted, so a word like `yeah` cannot be configured back in.
+
 Audio for the bank is rendered once per voice at session start by the configured speech
 provider, held in memory, and cached on disk under `.cache/backchannels` keyed by provider
 and voice, so a second room - or a later sweep - does not pay for it again. That is what keeps

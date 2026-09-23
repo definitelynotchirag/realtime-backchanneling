@@ -11,6 +11,8 @@ from urllib.parse import urlparse
 
 from pydantic import BaseModel, ConfigDict, Field, SecretStr
 
+from .cue_bank import CUE_TEXTS
+
 
 class ConfigurationError(ValueError):
     """Raised when the agent cannot start with the supplied environment."""
@@ -62,7 +64,12 @@ class Settings(BaseModel):
     deepgram_stt_endpointing_ms: int = 300
     groq_interim_interval_seconds: float = 3.0
     backchannel_enabled: bool = False
-    backchannel_text: str = "mm-hmm"
+    backchannel_texts: tuple[str, ...] = ("mm-hmm",)
+    """The cues the timer policy may use, in rotation. A list, because a policy with no
+    classifier cannot choose between them: repeating one sound for a whole session is
+    what makes an agent sound mechanical. Every entry must be a cue in the bank, which
+    is where the safety reasoning lives; the neutral group is the only one a timer
+    policy has any business using (`cue_bank.NEUTRAL_CUES`)."""
     backchannel_clip_source: Literal["tts", "assets"] = "tts"
     """Where acknowledgement audio comes from. "tts" renders the cue bank once per
     session in the configured voice and falls back to the committed clips if the
@@ -132,6 +139,20 @@ class Settings(BaseModel):
             "LIVEKIT_API_SECRET": source.get("LIVEKIT_API_SECRET", "").strip(),
         }
         stt_provider = source.get("STT_PROVIDER", "livekit_inference").strip().lower()
+        backchannel_texts = tuple(
+            item.strip()
+            for item in source.get("BACKCHANNEL_TEXT", "mm-hmm").split(",")
+            if item.strip()
+        )
+        if not backchannel_texts:
+            raise ConfigurationError("BACKCHANNEL_TEXT must name at least one cue")
+        unknown_cues = [cue for cue in backchannel_texts if cue not in CUE_TEXTS]
+        if unknown_cues:
+            raise ConfigurationError(
+                f"BACKCHANNEL_TEXT has unknown cue(s) {', '.join(unknown_cues)}; "
+                f"the bank is {', '.join(CUE_TEXTS)}"
+            )
+
         backchannel_clip_source = source.get("BACKCHANNEL_CLIP_SOURCE", "tts").strip().lower()
         if backchannel_clip_source not in {"tts", "assets"}:
             raise ConfigurationError("BACKCHANNEL_CLIP_SOURCE must be 'tts' or 'assets'")
@@ -263,7 +284,7 @@ class Settings(BaseModel):
             deepgram_stt_endpointing_ms=parse_int("DEEPGRAM_STT_ENDPOINTING_MS", 300),
             groq_interim_interval_seconds=parse_float("GROQ_INTERIM_INTERVAL_SECONDS", 3.0),
             backchannel_enabled=parse_bool("BACKCHANNEL_ENABLED", False),
-            backchannel_text=source.get("BACKCHANNEL_TEXT", "mm-hmm").strip(),
+            backchannel_texts=backchannel_texts,
             backchannel_clip_source=backchannel_clip_source,
             backchannel_delay_seconds=parse_float("BACKCHANNEL_DELAY_SECONDS", 1.4),
             backchannel_cooldown_seconds=parse_float("BACKCHANNEL_COOLDOWN_SECONDS", 4.0),
