@@ -116,3 +116,12 @@ def test_gemini_tts_is_selected_as_a_direct_tts_provider() -> None:
     assert tts.provider == "gemini"
     assert tts.sample_rate == 24000
     assert tts.capabilities.streaming is False
+
+
+def test_groq_llm_can_run_the_whole_stack() -> None:
+    settings = settings_for_provider_tests(LLM_PROVIDER="groq")
+
+    llm = create_llm(settings)
+
+    assert isinstance(llm, groq.LLM)
+    assert llm.model == "openai/gpt-oss-120b"

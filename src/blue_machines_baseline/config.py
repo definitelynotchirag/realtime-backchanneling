@@ -17,7 +17,7 @@ class ConfigurationError(ValueError):
 
 
 TTSProvider = Literal["livekit_inference", "elevenlabs", "gemini_tts", "groq_tts"]
-LLMProvider = Literal["gemini", "openrouter"]
+LLMProvider = Literal["gemini", "openrouter", "groq"]
 STTProvider = Literal["livekit_inference", "groq"]
 EotDetector = Literal["livekit_inference", "final_transcript"]
 
@@ -54,6 +54,7 @@ class Settings(BaseModel):
     llm_provider: LLMProvider = "gemini"
     gemini_api_key: SecretStr | None = None
     gemini_model: str = "gemini-2.5-flash"
+    groq_llm_model: str = "openai/gpt-oss-120b"
     openrouter_api_key: SecretStr | None = None
     openrouter_base_url: str = "https://openrouter.ai/api/v1"
     openrouter_model: str = "stealth/union-alpha"
@@ -94,8 +95,10 @@ class Settings(BaseModel):
             required["GEMINI_API_KEY"] = source.get("GEMINI_API_KEY", "").strip()
         elif llm_provider == "openrouter":
             required["OPENROUTER_API_KEY"] = source.get("OPENROUTER_API_KEY", "").strip()
+        elif llm_provider == "groq":
+            required["GROQ_API_KEY"] = source.get("GROQ_API_KEY", "").strip()
         else:
-            raise ConfigurationError("LLM_PROVIDER must be one of: gemini, openrouter")
+            raise ConfigurationError("LLM_PROVIDER must be one of: gemini, openrouter, groq")
         tts_provider = source.get("TTS_PROVIDER", "livekit_inference").strip().lower()
         if tts_provider == "elevenlabs" and not source.get("ELEVENLABS_API_KEY", "").strip():
             required["ELEVENLABS_API_KEY (when TTS_PROVIDER=elevenlabs)"] = ""
@@ -205,6 +208,7 @@ class Settings(BaseModel):
             if required.get("GEMINI_API_KEY")
             else None,
             gemini_model=source.get("GEMINI_MODEL", "gemini-2.5-flash").strip(),
+            groq_llm_model=source.get("GROQ_LLM_MODEL", "openai/gpt-oss-120b").strip(),
             openrouter_api_key=(
                 SecretStr(required["OPENROUTER_API_KEY"])
                 if required.get("OPENROUTER_API_KEY")

@@ -30,10 +30,11 @@ offline policy replay, the comparison table, and the visual run timeline.
 - A scripted scenario driver (`blue-machines-scenario`) that renders each scenario's
   utterance once, then drives every (scenario, mode, repeat) through real LiveKit rooms
   with real audio - no human at the microphone, and no dependence on speaking twice.
-- Provider options for environments where LiveKit Inference is unavailable: a direct
-  Gemini TTS adapter (`TTS_PROVIDER=gemini_tts`), native Groq speech
-  (`TTS_PROVIDER=groq_tts`, Orpheus), and Groq batch STT (`STT_PROVIDER=groq`, which is
-  the bundled plugin's non-streaming path).
+- Provider options for environments where LiveKit Inference is unavailable: native Groq
+  for all three roles (`STT_PROVIDER=groq`, `LLM_PROVIDER=groq`, `TTS_PROVIDER=groq_tts`),
+  a direct Gemini TTS adapter (`TTS_PROVIDER=gemini_tts`). Groq's speech model additionally
+  requires a one-time terms acceptance in their console; the API returns
+  `model_terms_required` until then, with the acceptance link in the error.
 - A real end-of-turn probability for the policy, from LiveKit's public streaming turn
   detector running on the user's audio, with an automatic final-transcript fallback. Each
   `eot_prediction` event names the model that answered (`turn-detector-v1-mini` locally,
@@ -452,9 +453,9 @@ uv run python -m compileall -q src tests
 uv run python -c "import blue_machines_baseline.agent; import blue_machines_baseline.api"
 ```
 
-These checks run without provider credentials (101 tests). A real room conversation needs
-valid LiveKit, an LLM key, and a speech provider: LiveKit Inference, ElevenLabs, the direct
-Gemini TTS adapter, or native Groq speech. Jev mode additionally needs `TYPESAFE_API_KEY`
+These checks run without provider credentials (102 tests). A real room conversation needs
+valid LiveKit, an LLM key, and a speech provider: LiveKit Inference, ElevenLabs, native Groq
+speech (after a one-time terms acceptance), or the direct Gemini TTS adapter. Jev mode additionally needs `TYPESAFE_API_KEY`
 and a streaming STT with interim results; Groq's STT is batch-only, so Jev mode is rejected
 with a clear error when it is selected with that provider. The replay runner, analyzer, API
 report, and browser build remain usable without any provider service.

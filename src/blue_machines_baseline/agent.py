@@ -117,7 +117,7 @@ def create_stt(settings: Settings) -> inference.STT | groq.STT:
     )
 
 
-def create_llm(settings: Settings) -> google.LLM | openai.LLM:
+def create_llm(settings: Settings) -> google.LLM | openai.LLM | groq.LLM:
     """Create the configured Gemini or OpenRouter LLM client."""
 
     if settings.llm_provider == "gemini":
@@ -126,6 +126,14 @@ def create_llm(settings: Settings) -> google.LLM | openai.LLM:
         return google.LLM(
             model=settings.gemini_model,
             api_key=settings.gemini_api_key.get_secret_value(),
+        )
+
+    if settings.llm_provider == "groq":
+        if settings.groq_api_key is None:
+            raise ConfigurationError("GROQ_API_KEY is required when LLM_PROVIDER=groq")
+        return groq.LLM(
+            model=settings.groq_llm_model,
+            api_key=settings.groq_api_key.get_secret_value(),
         )
 
     if settings.openrouter_api_key is None:
