@@ -70,10 +70,11 @@ class Settings(BaseModel):
     typesafe_api_key: SecretStr | None = None
     jev_model: str = "jev-latest"
     # The classifier's own latency is usually 0.4-0.9 s but occasionally spikes past
-    # 2.5 s; a timeout means silence, so the limit is generous and the cadence slower
-    # than the interims it is fed (Deepgram delivers them about once a second).
+    # 2.5 s; a timeout means silence, so the limit is generous. The cadence is the real
+    # gate on how early in a turn Jev can approve - at 1.5 s an approval about a short
+    # turn arrives as the turn ends, where the end-of-turn guard refuses to cue.
     jev_timeout_seconds: float = 4.0
-    jev_min_interval_seconds: float = 1.5
+    jev_min_interval_seconds: float = 0.8
     jev_approval_threshold: float = 0.55
     jev_helpful_threshold: float = 0.50
     jev_helpful_threshold_semantic: float = 0.52
@@ -265,7 +266,7 @@ class Settings(BaseModel):
             ),
             jev_model=source.get("JEV_MODEL", "jev-latest").strip(),
             jev_timeout_seconds=parse_float("JEV_TIMEOUT_SECONDS", 4.0),
-            jev_min_interval_seconds=parse_float("JEV_MIN_INTERVAL_SECONDS", 1.5),
+            jev_min_interval_seconds=parse_float("JEV_MIN_INTERVAL_SECONDS", 0.8),
             jev_approval_threshold=parse_float("JEV_APPROVAL_THRESHOLD", 0.55),
             jev_helpful_threshold=parse_float("JEV_HELPFUL_THRESHOLD", 0.50),
             jev_helpful_threshold_semantic=parse_float("JEV_HELPFUL_THRESHOLD_SEMANTIC", 0.52),

@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-23T14:43:33.464499+00:00",
+  "generated_at": "2026-09-23T22:46:59.235007+00:00",
   "overall": {
     "backchannel": {
       "audible_backchannels": 21,
@@ -112,6 +112,8 @@
       "response_stdev_ms": 20.181,
       "run_id": "aggregate",
       "scenario_id": "all",
+      "stt_audio_duration_ms": [],
+      "stt_audio_duration_p50_ms": null,
       "stt_duration_ms": [],
       "stt_duration_p50_ms": null,
       "tts_ttfb_ms": [
@@ -233,6 +235,8 @@
       "response_stdev_ms": 20.181,
       "run_id": "aggregate",
       "scenario_id": "all",
+      "stt_audio_duration_ms": [],
+      "stt_audio_duration_p50_ms": null,
       "stt_duration_ms": [],
       "stt_duration_p50_ms": null,
       "tts_ttfb_ms": [
@@ -373,6 +377,8 @@
       "response_stdev_ms": 20.181,
       "run_id": "aggregate",
       "scenario_id": "all",
+      "stt_audio_duration_ms": [],
+      "stt_audio_duration_p50_ms": null,
       "stt_duration_ms": [],
       "stt_duration_p50_ms": null,
       "tts_ttfb_ms": [
@@ -464,6 +470,8 @@
           "response_stdev_ms": 10.924,
           "run_id": "aggregate",
           "scenario_id": "all",
+          "stt_audio_duration_ms": [],
+          "stt_audio_duration_p50_ms": null,
           "stt_duration_ms": [],
           "stt_duration_p50_ms": null,
           "tts_ttfb_ms": [
@@ -522,6 +530,8 @@
           "response_stdev_ms": 10.924,
           "run_id": "aggregate",
           "scenario_id": "all",
+          "stt_audio_duration_ms": [],
+          "stt_audio_duration_p50_ms": null,
           "stt_duration_ms": [],
           "stt_duration_p50_ms": null,
           "tts_ttfb_ms": [
@@ -580,6 +590,8 @@
           "response_stdev_ms": 10.924,
           "run_id": "aggregate",
           "scenario_id": "all",
+          "stt_audio_duration_ms": [],
+          "stt_audio_duration_p50_ms": null,
           "stt_duration_ms": [],
           "stt_duration_p50_ms": null,
           "tts_ttfb_ms": [
@@ -637,6 +649,8 @@
           "response_stdev_ms": null,
           "run_id": "replay-short_answer-baseline-01",
           "scenario_id": "short_answer",
+          "stt_audio_duration_ms": [],
+          "stt_audio_duration_p50_ms": null,
           "stt_duration_ms": [],
           "stt_duration_p50_ms": null,
           "tts_ttfb_ms": [
@@ -689,6 +703,8 @@
           "response_stdev_ms": null,
           "run_id": "replay-short_answer-backchannel-01",
           "scenario_id": "short_answer",
+          "stt_audio_duration_ms": [],
+          "stt_audio_duration_p50_ms": null,
           "stt_duration_ms": [],
           "stt_duration_p50_ms": null,
           "tts_ttfb_ms": [
@@ -741,6 +757,8 @@
           "response_stdev_ms": null,
           "run_id": "replay-short_answer-jev_backchannel-01",
           "scenario_id": "short_answer",
+          "stt_audio_duration_ms": [],
+          "stt_audio_duration_p50_ms": null,
           "stt_duration_ms": [],
           "stt_duration_p50_ms": null,
           "tts_ttfb_ms": [
@@ -793,6 +811,8 @@
           "response_stdev_ms": null,
           "run_id": "replay-short_answer-baseline-02",
           "scenario_id": "short_answer",
+          "stt_audio_duration_ms": [],
+          "stt_audio_duration_p50_ms": null,
           "stt_duration_ms": [],
           "stt_duration_p50_ms": null,
           "tts_ttfb_ms": [
@@ -845,6 +865,8 @@
           "response_stdev_ms": null,
           "run_id": "replay-short_answer-backchannel-02",
           "scenario_id": "short_answer",
+          "stt_audio_duration_ms": [],
+          "stt_audio_duration_p50_ms": null,
           "stt_duration_ms": [],
           "stt_duration_p50_ms": null,
           "tts_ttfb_ms": [
@@ -897,6 +919,8 @@
           "response_stdev_ms": null,
           "run_id": "replay-short_answer-jev_backchannel-02",
           "scenario_id": "short_answer",
+          "stt_audio_duration_ms": [],
+          "stt_audio_duration_p50_ms": null,
           "stt_duration_ms": [],
           "stt_duration_p50_ms": null,
           "tts_ttfb_ms": [
@@ -949,6 +973,8 @@
           "response_stdev_ms": null,
           "run_id": "replay-short_answer-baseline-03",
           "scenario_id": "short_answer",
+          "stt_audio_duration_ms": [],
+          "stt_audio_duration_p50_ms": null,
           "stt_duration_ms": [],
           "stt_duration_p50_ms": null,
           "tts_ttfb_ms": [
@@ -1001,6 +1027,8 @@
           "response_stdev_ms": null,
           "run_id": "replay-short_answer-backchannel-03",
           "scenario_id": "short_answer",
+          "stt_audio_duration_ms": [],
+          "stt_audio_duration_p50_ms": null,
           "stt_duration_ms": [],
           "stt_duration_p50_ms": null,
           "tts_ttfb_ms": [
@@ -1053,6 +1081,8 @@
           "response_stdev_ms": null,
           "run_id": "replay-short_answer-jev_backchannel-03",
           "scenario_id": "short_answer",
+          "stt_audio_duration_ms": [],
+          "stt_audio_duration_p50_ms": null,
           "stt_duration_ms": [],
           "stt_duration_p50_ms": null,
           "tts_ttfb_ms": [
@@ -1118,6 +1148,8 @@
           "response_stdev_ms": 3.393,
           "run_id": "aggregate",
           "scenario_id": "all",
+          "stt_audio_duration_ms": [],
+          "stt_audio_duration_p50_ms": null,
           "stt_duration_ms": [],
           "stt_duration_p50_ms": null,
           "tts_ttfb_ms": [
@@ -1176,6 +1208,8 @@
           "response_stdev_ms": 3.393,
           "run_id": "aggregate",
           "scenario_id": "all",
+          "stt_audio_duration_ms": [],
+          "stt_audio_duration_p50_ms": null,
           "stt_duration_ms": [],
           "stt_duration_p50_ms": null,
           "tts_ttfb_ms": [
@@ -1238,6 +1272,8 @@
           "response_stdev_ms": 3.393,
           "run_id": "aggregate",
           "scenario_id": "all",
+          "stt_audio_duration_ms": [],
+          "stt_audio_duration_p50_ms": null,
           "stt_duration_ms": [],
           "stt_duration_p50_ms": null,
           "tts_ttfb_ms": [
@@ -1295,6 +1331,8 @@
           "response_stdev_ms": null,
           "run_id": "replay-long_monologue-baseline-01",
           "scenario_id": "long_monologue",
+          "stt_audio_duration_ms": [],
+          "stt_audio_duration_p50_ms": null,
           "stt_duration_ms": [],
           "stt_duration_p50_ms": null,
           "tts_ttfb_ms": [
@@ -1349,6 +1387,8 @@
           "response_stdev_ms": null,
           "run_id": "replay-long_monologue-backchannel-01",
           "scenario_id": "long_monologue",
+          "stt_audio_duration_ms": [],
+          "stt_audio_duration_p50_ms": null,
           "stt_duration_ms": [],
           "stt_duration_p50_ms": null,
           "tts_ttfb_ms": [
@@ -1403,6 +1443,8 @@
           "response_stdev_ms": null,
           "run_id": "replay-long_monologue-jev_backchannel-01",
           "scenario_id": "long_monologue",
+          "stt_audio_duration_ms": [],
+          "stt_audio_duration_p50_ms": null,
           "stt_duration_ms": [],
           "stt_duration_p50_ms": null,
           "tts_ttfb_ms": [
@@ -1455,6 +1497,8 @@
           "response_stdev_ms": null,
           "run_id": "replay-long_monologue-baseline-02",
           "scenario_id": "long_monologue",
+          "stt_audio_duration_ms": [],
+          "stt_audio_duration_p50_ms": null,
           "stt_duration_ms": [],
           "stt_duration_p50_ms": null,
           "tts_ttfb_ms": [
@@ -1509,6 +1553,8 @@
           "response_stdev_ms": null,
           "run_id": "replay-long_monologue-backchannel-02",
           "scenario_id": "long_monologue",
+          "stt_audio_duration_ms": [],
+          "stt_audio_duration_p50_ms": null,
           "stt_duration_ms": [],
           "stt_duration_p50_ms": null,
           "tts_ttfb_ms": [
@@ -1563,6 +1609,8 @@
           "response_stdev_ms": null,
           "run_id": "replay-long_monologue-jev_backchannel-02",
           "scenario_id": "long_monologue",
+          "stt_audio_duration_ms": [],
+          "stt_audio_duration_p50_ms": null,
           "stt_duration_ms": [],
           "stt_duration_p50_ms": null,
           "tts_ttfb_ms": [
@@ -1615,6 +1663,8 @@
           "response_stdev_ms": null,
           "run_id": "replay-long_monologue-baseline-03",
           "scenario_id": "long_monologue",
+          "stt_audio_duration_ms": [],
+          "stt_audio_duration_p50_ms": null,
           "stt_duration_ms": [],
           "stt_duration_p50_ms": null,
           "tts_ttfb_ms": [
@@ -1669,6 +1719,8 @@
           "response_stdev_ms": null,
           "run_id": "replay-long_monologue-backchannel-03",
           "scenario_id": "long_monologue",
+          "stt_audio_duration_ms": [],
+          "stt_audio_duration_p50_ms": null,
           "stt_duration_ms": [],
           "stt_duration_p50_ms": null,
           "tts_ttfb_ms": [
@@ -1723,6 +1775,8 @@
           "response_stdev_ms": null,
           "run_id": "replay-long_monologue-jev_backchannel-03",
           "scenario_id": "long_monologue",
+          "stt_audio_duration_ms": [],
+          "stt_audio_duration_p50_ms": null,
           "stt_duration_ms": [],
           "stt_duration_p50_ms": null,
           "tts_ttfb_ms": [
@@ -1784,6 +1838,8 @@
           "response_stdev_ms": 17.48,
           "run_id": "aggregate",
           "scenario_id": "all",
+          "stt_audio_duration_ms": [],
+          "stt_audio_duration_p50_ms": null,
           "stt_duration_ms": [],
           "stt_duration_p50_ms": null,
           "tts_ttfb_ms": [
@@ -1842,6 +1898,8 @@
           "response_stdev_ms": 17.48,
           "run_id": "aggregate",
           "scenario_id": "all",
+          "stt_audio_duration_ms": [],
+          "stt_audio_duration_p50_ms": null,
           "stt_duration_ms": [],
           "stt_duration_p50_ms": null,
           "tts_ttfb_ms": [
@@ -1900,6 +1958,8 @@
           "response_stdev_ms": 17.48,
           "run_id": "aggregate",
           "scenario_id": "all",
+          "stt_audio_duration_ms": [],
+          "stt_audio_duration_p50_ms": null,
           "stt_duration_ms": [],
           "stt_duration_p50_ms": null,
           "tts_ttfb_ms": [
@@ -1957,6 +2017,8 @@
           "response_stdev_ms": null,
           "run_id": "replay-approaching_end_of_turn-baseline-01",
           "scenario_id": "approaching_end_of_turn",
+          "stt_audio_duration_ms": [],
+          "stt_audio_duration_p50_ms": null,
           "stt_duration_ms": [],
           "stt_duration_p50_ms": null,
           "tts_ttfb_ms": [
@@ -2009,6 +2071,8 @@
           "response_stdev_ms": null,
           "run_id": "replay-approaching_end_of_turn-backchannel-01",
           "scenario_id": "approaching_end_of_turn",
+          "stt_audio_duration_ms": [],
+          "stt_audio_duration_p50_ms": null,
           "stt_duration_ms": [],
           "stt_duration_p50_ms": null,
           "tts_ttfb_ms": [
@@ -2061,6 +2125,8 @@
           "response_stdev_ms": null,
           "run_id": "replay-approaching_end_of_turn-jev_backchannel-01",
           "scenario_id": "approaching_end_of_turn",
+          "stt_audio_duration_ms": [],
+          "stt_audio_duration_p50_ms": null,
           "stt_duration_ms": [],
           "stt_duration_p50_ms": null,
           "tts_ttfb_ms": [
@@ -2113,6 +2179,8 @@
           "response_stdev_ms": null,
           "run_id": "replay-approaching_end_of_turn-baseline-02",
           "scenario_id": "approaching_end_of_turn",
+          "stt_audio_duration_ms": [],
+          "stt_audio_duration_p50_ms": null,
           "stt_duration_ms": [],
           "stt_duration_p50_ms": null,
           "tts_ttfb_ms": [
@@ -2165,6 +2233,8 @@
           "response_stdev_ms": null,
           "run_id": "replay-approaching_end_of_turn-backchannel-02",
           "scenario_id": "approaching_end_of_turn",
+          "stt_audio_duration_ms": [],
+          "stt_audio_duration_p50_ms": null,
           "stt_duration_ms": [],
           "stt_duration_p50_ms": null,
           "tts_ttfb_ms": [
@@ -2217,6 +2287,8 @@
           "response_stdev_ms": null,
           "run_id": "replay-approaching_end_of_turn-jev_backchannel-02",
           "scenario_id": "approaching_end_of_turn",
+          "stt_audio_duration_ms": [],
+          "stt_audio_duration_p50_ms": null,
           "stt_duration_ms": [],
           "stt_duration_p50_ms": null,
           "tts_ttfb_ms": [
@@ -2269,6 +2341,8 @@
           "response_stdev_ms": null,
           "run_id": "replay-approaching_end_of_turn-baseline-03",
           "scenario_id": "approaching_end_of_turn",
+          "stt_audio_duration_ms": [],
+          "stt_audio_duration_p50_ms": null,
           "stt_duration_ms": [],
           "stt_duration_p50_ms": null,
           "tts_ttfb_ms": [
@@ -2321,6 +2395,8 @@
           "response_stdev_ms": null,
           "run_id": "replay-approaching_end_of_turn-backchannel-03",
           "scenario_id": "approaching_end_of_turn",
+          "stt_audio_duration_ms": [],
+          "stt_audio_duration_p50_ms": null,
           "stt_duration_ms": [],
           "stt_duration_p50_ms": null,
           "tts_ttfb_ms": [
@@ -2373,6 +2449,8 @@
           "response_stdev_ms": null,
           "run_id": "replay-approaching_end_of_turn-jev_backchannel-03",
           "scenario_id": "approaching_end_of_turn",
+          "stt_audio_duration_ms": [],
+          "stt_audio_duration_p50_ms": null,
           "stt_duration_ms": [],
           "stt_duration_p50_ms": null,
           "tts_ttfb_ms": [
@@ -2438,6 +2516,8 @@
           "response_stdev_ms": 18.274,
           "run_id": "aggregate",
           "scenario_id": "all",
+          "stt_audio_duration_ms": [],
+          "stt_audio_duration_p50_ms": null,
           "stt_duration_ms": [],
           "stt_duration_p50_ms": null,
           "tts_ttfb_ms": [
@@ -2496,6 +2576,8 @@
           "response_stdev_ms": 18.274,
           "run_id": "aggregate",
           "scenario_id": "all",
+          "stt_audio_duration_ms": [],
+          "stt_audio_duration_p50_ms": null,
           "stt_duration_ms": [],
           "stt_duration_p50_ms": null,
           "tts_ttfb_ms": [
@@ -2558,6 +2640,8 @@
           "response_stdev_ms": 18.274,
           "run_id": "aggregate",
           "scenario_id": "all",
+          "stt_audio_duration_ms": [],
+          "stt_audio_duration_p50_ms": null,
           "stt_duration_ms": [],
           "stt_duration_p50_ms": null,
           "tts_ttfb_ms": [
@@ -2615,6 +2699,8 @@
           "response_stdev_ms": null,
           "run_id": "replay-middle_pause-baseline-01",
           "scenario_id": "middle_pause",
+          "stt_audio_duration_ms": [],
+          "stt_audio_duration_p50_ms": null,
           "stt_duration_ms": [],
           "stt_duration_p50_ms": null,
           "tts_ttfb_ms": [
@@ -2669,6 +2755,8 @@
           "response_stdev_ms": null,
           "run_id": "replay-middle_pause-backchannel-01",
           "scenario_id": "middle_pause",
+          "stt_audio_duration_ms": [],
+          "stt_audio_duration_p50_ms": null,
           "stt_duration_ms": [],
           "stt_duration_p50_ms": null,
           "tts_ttfb_ms": [
@@ -2723,6 +2811,8 @@
           "response_stdev_ms": null,
           "run_id": "replay-middle_pause-jev_backchannel-01",
           "scenario_id": "middle_pause",
+          "stt_audio_duration_ms": [],
+          "stt_audio_duration_p50_ms": null,
           "stt_duration_ms": [],
           "stt_duration_p50_ms": null,
           "tts_ttfb_ms": [
@@ -2775,6 +2865,8 @@
           "response_stdev_ms": null,
           "run_id": "replay-middle_pause-baseline-02",
           "scenario_id": "middle_pause",
+          "stt_audio_duration_ms": [],
+          "stt_audio_duration_p50_ms": null,
           "stt_duration_ms": [],
           "stt_duration_p50_ms": null,
           "tts_ttfb_ms": [
@@ -2829,6 +2921,8 @@
           "response_stdev_ms": null,
           "run_id": "replay-middle_pause-backchannel-02",
           "scenario_id": "middle_pause",
+          "stt_audio_duration_ms": [],
+          "stt_audio_duration_p50_ms": null,
           "stt_duration_ms": [],
           "stt_duration_p50_ms": null,
           "tts_ttfb_ms": [
@@ -2883,6 +2977,8 @@
           "response_stdev_ms": null,
           "run_id": "replay-middle_pause-jev_backchannel-02",
           "scenario_id": "middle_pause",
+          "stt_audio_duration_ms": [],
+          "stt_audio_duration_p50_ms": null,
           "stt_duration_ms": [],
           "stt_duration_p50_ms": null,
           "tts_ttfb_ms": [
@@ -2935,6 +3031,8 @@
           "response_stdev_ms": null,
           "run_id": "replay-middle_pause-baseline-03",
           "scenario_id": "middle_pause",
+          "stt_audio_duration_ms": [],
+          "stt_audio_duration_p50_ms": null,
           "stt_duration_ms": [],
           "stt_duration_p50_ms": null,
           "tts_ttfb_ms": [
@@ -2989,6 +3087,8 @@
           "response_stdev_ms": null,
           "run_id": "replay-middle_pause-backchannel-03",
           "scenario_id": "middle_pause",
+          "stt_audio_duration_ms": [],
+          "stt_audio_duration_p50_ms": null,
           "stt_duration_ms": [],
           "stt_duration_p50_ms": null,
           "tts_ttfb_ms": [
@@ -3043,6 +3143,8 @@
           "response_stdev_ms": null,
           "run_id": "replay-middle_pause-jev_backchannel-03",
           "scenario_id": "middle_pause",
+          "stt_audio_duration_ms": [],
+          "stt_audio_duration_p50_ms": null,
           "stt_duration_ms": [],
           "stt_duration_p50_ms": null,
           "tts_ttfb_ms": [
@@ -3108,6 +3210,8 @@
           "response_stdev_ms": 27.238,
           "run_id": "aggregate",
           "scenario_id": "all",
+          "stt_audio_duration_ms": [],
+          "stt_audio_duration_p50_ms": null,
           "stt_duration_ms": [],
           "stt_duration_p50_ms": null,
           "tts_ttfb_ms": [
@@ -3166,6 +3270,8 @@
           "response_stdev_ms": 27.238,
           "run_id": "aggregate",
           "scenario_id": "all",
+          "stt_audio_duration_ms": [],
+          "stt_audio_duration_p50_ms": null,
           "stt_duration_ms": [],
           "stt_duration_p50_ms": null,
           "tts_ttfb_ms": [
@@ -3228,6 +3334,8 @@
           "response_stdev_ms": 27.238,
           "run_id": "aggregate",
           "scenario_id": "all",
+          "stt_audio_duration_ms": [],
+          "stt_audio_duration_p50_ms": null,
           "stt_duration_ms": [],
           "stt_duration_p50_ms": null,
           "tts_ttfb_ms": [
@@ -3285,6 +3393,8 @@
           "response_stdev_ms": null,
           "run_id": "replay-fast_speaker-baseline-01",
           "scenario_id": "fast_speaker",
+          "stt_audio_duration_ms": [],
+          "stt_audio_duration_p50_ms": null,
           "stt_duration_ms": [],
           "stt_duration_p50_ms": null,
           "tts_ttfb_ms": [
@@ -3339,6 +3449,8 @@
           "response_stdev_ms": null,
           "run_id": "replay-fast_speaker-backchannel-01",
           "scenario_id": "fast_speaker",
+          "stt_audio_duration_ms": [],
+          "stt_audio_duration_p50_ms": null,
           "stt_duration_ms": [],
           "stt_duration_p50_ms": null,
           "tts_ttfb_ms": [
@@ -3393,6 +3505,8 @@
           "response_stdev_ms": null,
           "run_id": "replay-fast_speaker-jev_backchannel-01",
           "scenario_id": "fast_speaker",
+          "stt_audio_duration_ms": [],
+          "stt_audio_duration_p50_ms": null,
           "stt_duration_ms": [],
           "stt_duration_p50_ms": null,
           "tts_ttfb_ms": [
@@ -3445,6 +3559,8 @@
           "response_stdev_ms": null,
           "run_id": "replay-fast_speaker-baseline-02",
           "scenario_id": "fast_speaker",
+          "stt_audio_duration_ms": [],
+          "stt_audio_duration_p50_ms": null,
           "stt_duration_ms": [],
           "stt_duration_p50_ms": null,
           "tts_ttfb_ms": [
@@ -3499,6 +3615,8 @@
           "response_stdev_ms": null,
           "run_id": "replay-fast_speaker-backchannel-02",
           "scenario_id": "fast_speaker",
+          "stt_audio_duration_ms": [],
+          "stt_audio_duration_p50_ms": null,
           "stt_duration_ms": [],
           "stt_duration_p50_ms": null,
           "tts_ttfb_ms": [
@@ -3553,6 +3671,8 @@
           "response_stdev_ms": null,
           "run_id": "replay-fast_speaker-jev_backchannel-02",
           "scenario_id": "fast_speaker",
+          "stt_audio_duration_ms": [],
+          "stt_audio_duration_p50_ms": null,
           "stt_duration_ms": [],
           "stt_duration_p50_ms": null,
           "tts_ttfb_ms": [
@@ -3605,6 +3725,8 @@
           "response_stdev_ms": null,
           "run_id": "replay-fast_speaker-baseline-03",
           "scenario_id": "fast_speaker",
+          "stt_audio_duration_ms": [],
+          "stt_audio_duration_p50_ms": null,
           "stt_duration_ms": [],
           "stt_duration_p50_ms": null,
           "tts_ttfb_ms": [
@@ -3659,6 +3781,8 @@
           "response_stdev_ms": null,
           "run_id": "replay-fast_speaker-backchannel-03",
           "scenario_id": "fast_speaker",
+          "stt_audio_duration_ms": [],
+          "stt_audio_duration_p50_ms": null,
           "stt_duration_ms": [],
           "stt_duration_p50_ms": null,
           "tts_ttfb_ms": [
@@ -3713,6 +3837,8 @@
           "response_stdev_ms": null,
           "run_id": "replay-fast_speaker-jev_backchannel-03",
           "scenario_id": "fast_speaker",
+          "stt_audio_duration_ms": [],
+          "stt_audio_duration_p50_ms": null,
           "stt_duration_ms": [],
           "stt_duration_p50_ms": null,
           "tts_ttfb_ms": [
@@ -3778,6 +3904,8 @@
           "response_stdev_ms": 22.362,
           "run_id": "aggregate",
           "scenario_id": "all",
+          "stt_audio_duration_ms": [],
+          "stt_audio_duration_p50_ms": null,
           "stt_duration_ms": [],
           "stt_duration_p50_ms": null,
           "tts_ttfb_ms": [
@@ -3836,6 +3964,8 @@
           "response_stdev_ms": 22.362,
           "run_id": "aggregate",
           "scenario_id": "all",
+          "stt_audio_duration_ms": [],
+          "stt_audio_duration_p50_ms": null,
           "stt_duration_ms": [],
           "stt_duration_p50_ms": null,
           "tts_ttfb_ms": [
@@ -3898,6 +4028,8 @@
           "response_stdev_ms": 22.362,
           "run_id": "aggregate",
           "scenario_id": "all",
+          "stt_audio_duration_ms": [],
+          "stt_audio_duration_p50_ms": null,
           "stt_duration_ms": [],
           "stt_duration_p50_ms": null,
           "tts_ttfb_ms": [
@@ -3955,6 +4087,8 @@
           "response_stdev_ms": null,
           "run_id": "replay-noisy_audio-baseline-01",
           "scenario_id": "noisy_audio",
+          "stt_audio_duration_ms": [],
+          "stt_audio_duration_p50_ms": null,
           "stt_duration_ms": [],
           "stt_duration_p50_ms": null,
           "tts_ttfb_ms": [
@@ -4009,6 +4143,8 @@
           "response_stdev_ms": null,
           "run_id": "replay-noisy_audio-backchannel-01",
           "scenario_id": "noisy_audio",
+          "stt_audio_duration_ms": [],
+          "stt_audio_duration_p50_ms": null,
           "stt_duration_ms": [],
           "stt_duration_p50_ms": null,
           "tts_ttfb_ms": [
@@ -4063,6 +4199,8 @@
           "response_stdev_ms": null,
           "run_id": "replay-noisy_audio-jev_backchannel-01",
           "scenario_id": "noisy_audio",
+          "stt_audio_duration_ms": [],
+          "stt_audio_duration_p50_ms": null,
           "stt_duration_ms": [],
           "stt_duration_p50_ms": null,
           "tts_ttfb_ms": [
@@ -4115,6 +4253,8 @@
           "response_stdev_ms": null,
           "run_id": "replay-noisy_audio-baseline-02",
           "scenario_id": "noisy_audio",
+          "stt_audio_duration_ms": [],
+          "stt_audio_duration_p50_ms": null,
           "stt_duration_ms": [],
           "stt_duration_p50_ms": null,
           "tts_ttfb_ms": [
@@ -4169,6 +4309,8 @@
           "response_stdev_ms": null,
           "run_id": "replay-noisy_audio-backchannel-02",
           "scenario_id": "noisy_audio",
+          "stt_audio_duration_ms": [],
+          "stt_audio_duration_p50_ms": null,
           "stt_duration_ms": [],
           "stt_duration_p50_ms": null,
           "tts_ttfb_ms": [
@@ -4223,6 +4365,8 @@
           "response_stdev_ms": null,
           "run_id": "replay-noisy_audio-jev_backchannel-02",
           "scenario_id": "noisy_audio",
+          "stt_audio_duration_ms": [],
+          "stt_audio_duration_p50_ms": null,
           "stt_duration_ms": [],
           "stt_duration_p50_ms": null,
           "tts_ttfb_ms": [
@@ -4275,6 +4419,8 @@
           "response_stdev_ms": null,
           "run_id": "replay-noisy_audio-baseline-03",
           "scenario_id": "noisy_audio",
+          "stt_audio_duration_ms": [],
+          "stt_audio_duration_p50_ms": null,
           "stt_duration_ms": [],
           "stt_duration_p50_ms": null,
           "tts_ttfb_ms": [
@@ -4329,6 +4475,8 @@
           "response_stdev_ms": null,
           "run_id": "replay-noisy_audio-backchannel-03",
           "scenario_id": "noisy_audio",
+          "stt_audio_duration_ms": [],
+          "stt_audio_duration_p50_ms": null,
           "stt_duration_ms": [],
           "stt_duration_p50_ms": null,
           "tts_ttfb_ms": [
@@ -4383,6 +4531,8 @@
           "response_stdev_ms": null,
           "run_id": "replay-noisy_audio-jev_backchannel-03",
           "scenario_id": "noisy_audio",
+          "stt_audio_duration_ms": [],
+          "stt_audio_duration_p50_ms": null,
           "stt_duration_ms": [],
           "stt_duration_p50_ms": null,
           "tts_ttfb_ms": [
@@ -4454,6 +4604,8 @@
           "response_stdev_ms": 19.217,
           "run_id": "aggregate",
           "scenario_id": "all",
+          "stt_audio_duration_ms": [],
+          "stt_audio_duration_p50_ms": null,
           "stt_duration_ms": [],
           "stt_duration_p50_ms": null,
           "tts_ttfb_ms": [
@@ -4512,6 +4664,8 @@
           "response_stdev_ms": 19.217,
           "run_id": "aggregate",
           "scenario_id": "all",
+          "stt_audio_duration_ms": [],
+          "stt_audio_duration_p50_ms": null,
           "stt_duration_ms": [],
           "stt_duration_p50_ms": null,
           "tts_ttfb_ms": [
@@ -4577,6 +4731,8 @@
           "response_stdev_ms": 19.217,
           "run_id": "aggregate",
           "scenario_id": "all",
+          "stt_audio_duration_ms": [],
+          "stt_audio_duration_p50_ms": null,
           "stt_duration_ms": [],
           "stt_duration_p50_ms": null,
           "tts_ttfb_ms": [
@@ -4634,6 +4790,8 @@
           "response_stdev_ms": null,
           "run_id": "replay-multiple_backchannels-baseline-01",
           "scenario_id": "multiple_backchannels",
+          "stt_audio_duration_ms": [],
+          "stt_audio_duration_p50_ms": null,
           "stt_duration_ms": [],
           "stt_duration_p50_ms": null,
           "tts_ttfb_ms": [
@@ -4690,6 +4848,8 @@
           "response_stdev_ms": null,
           "run_id": "replay-multiple_backchannels-backchannel-01",
           "scenario_id": "multiple_backchannels",
+          "stt_audio_duration_ms": [],
+          "stt_audio_duration_p50_ms": null,
           "stt_duration_ms": [],
           "stt_duration_p50_ms": null,
           "tts_ttfb_ms": [
@@ -4745,6 +4905,8 @@
           "response_stdev_ms": null,
           "run_id": "replay-multiple_backchannels-jev_backchannel-01",
           "scenario_id": "multiple_backchannels",
+          "stt_audio_duration_ms": [],
+          "stt_audio_duration_p50_ms": null,
           "stt_duration_ms": [],
           "stt_duration_p50_ms": null,
           "tts_ttfb_ms": [
@@ -4797,6 +4959,8 @@
           "response_stdev_ms": null,
           "run_id": "replay-multiple_backchannels-baseline-02",
           "scenario_id": "multiple_backchannels",
+          "stt_audio_duration_ms": [],
+          "stt_audio_duration_p50_ms": null,
           "stt_duration_ms": [],
           "stt_duration_p50_ms": null,
           "tts_ttfb_ms": [
@@ -4853,6 +5017,8 @@
           "response_stdev_ms": null,
           "run_id": "replay-multiple_backchannels-backchannel-02",
           "scenario_id": "multiple_backchannels",
+          "stt_audio_duration_ms": [],
+          "stt_audio_duration_p50_ms": null,
           "stt_duration_ms": [],
           "stt_duration_p50_ms": null,
           "tts_ttfb_ms": [
@@ -4908,6 +5074,8 @@
           "response_stdev_ms": null,
           "run_id": "replay-multiple_backchannels-jev_backchannel-02",
           "scenario_id": "multiple_backchannels",
+          "stt_audio_duration_ms": [],
+          "stt_audio_duration_p50_ms": null,
           "stt_duration_ms": [],
           "stt_duration_p50_ms": null,
           "tts_ttfb_ms": [
@@ -4960,6 +5128,8 @@
           "response_stdev_ms": null,
           "run_id": "replay-multiple_backchannels-baseline-03",
           "scenario_id": "multiple_backchannels",
+          "stt_audio_duration_ms": [],
+          "stt_audio_duration_p50_ms": null,
           "stt_duration_ms": [],
           "stt_duration_p50_ms": null,
           "tts_ttfb_ms": [
@@ -5016,6 +5186,8 @@
           "response_stdev_ms": null,
           "run_id": "replay-multiple_backchannels-backchannel-03",
           "scenario_id": "multiple_backchannels",
+          "stt_audio_duration_ms": [],
+          "stt_audio_duration_p50_ms": null,
           "stt_duration_ms": [],
           "stt_duration_p50_ms": null,
           "tts_ttfb_ms": [
@@ -5071,6 +5243,8 @@
           "response_stdev_ms": null,
           "run_id": "replay-multiple_backchannels-jev_backchannel-03",
           "scenario_id": "multiple_backchannels",
+          "stt_audio_duration_ms": [],
+          "stt_audio_duration_p50_ms": null,
           "stt_duration_ms": [],
           "stt_duration_p50_ms": null,
           "tts_ttfb_ms": [
@@ -5132,6 +5306,8 @@
           "response_stdev_ms": 19.739,
           "run_id": "aggregate",
           "scenario_id": "all",
+          "stt_audio_duration_ms": [],
+          "stt_audio_duration_p50_ms": null,
           "stt_duration_ms": [],
           "stt_duration_p50_ms": null,
           "tts_ttfb_ms": [
@@ -5190,6 +5366,8 @@
           "response_stdev_ms": 19.739,
           "run_id": "aggregate",
           "scenario_id": "all",
+          "stt_audio_duration_ms": [],
+          "stt_audio_duration_p50_ms": null,
           "stt_duration_ms": [],
           "stt_duration_p50_ms": null,
           "tts_ttfb_ms": [
@@ -5248,6 +5426,8 @@
           "response_stdev_ms": 19.739,
           "run_id": "aggregate",
           "scenario_id": "all",
+          "stt_audio_duration_ms": [],
+          "stt_audio_duration_p50_ms": null,
           "stt_duration_ms": [],
           "stt_duration_p50_ms": null,
           "tts_ttfb_ms": [
@@ -5305,6 +5485,8 @@
           "response_stdev_ms": null,
           "run_id": "replay-stop_before_ack-baseline-01",
           "scenario_id": "stop_before_ack",
+          "stt_audio_duration_ms": [],
+          "stt_audio_duration_p50_ms": null,
           "stt_duration_ms": [],
           "stt_duration_p50_ms": null,
           "tts_ttfb_ms": [
@@ -5357,6 +5539,8 @@
           "response_stdev_ms": null,
           "run_id": "replay-stop_before_ack-backchannel-01",
           "scenario_id": "stop_before_ack",
+          "stt_audio_duration_ms": [],
+          "stt_audio_duration_p50_ms": null,
           "stt_duration_ms": [],
           "stt_duration_p50_ms": null,
           "tts_ttfb_ms": [
@@ -5409,6 +5593,8 @@
           "response_stdev_ms": null,
           "run_id": "replay-stop_before_ack-jev_backchannel-01",
           "scenario_id": "stop_before_ack",
+          "stt_audio_duration_ms": [],
+          "stt_audio_duration_p50_ms": null,
           "stt_duration_ms": [],
           "stt_duration_p50_ms": null,
           "tts_ttfb_ms": [
@@ -5461,6 +5647,8 @@
           "response_stdev_ms": null,
           "run_id": "replay-stop_before_ack-baseline-02",
           "scenario_id": "stop_before_ack",
+          "stt_audio_duration_ms": [],
+          "stt_audio_duration_p50_ms": null,
           "stt_duration_ms": [],
           "stt_duration_p50_ms": null,
           "tts_ttfb_ms": [
@@ -5513,6 +5701,8 @@
           "response_stdev_ms": null,
           "run_id": "replay-stop_before_ack-backchannel-02",
           "scenario_id": "stop_before_ack",
+          "stt_audio_duration_ms": [],
+          "stt_audio_duration_p50_ms": null,
           "stt_duration_ms": [],
           "stt_duration_p50_ms": null,
           "tts_ttfb_ms": [
@@ -5565,6 +5755,8 @@
           "response_stdev_ms": null,
           "run_id": "replay-stop_before_ack-jev_backchannel-02",
           "scenario_id": "stop_before_ack",
+          "stt_audio_duration_ms": [],
+          "stt_audio_duration_p50_ms": null,
           "stt_duration_ms": [],
           "stt_duration_p50_ms": null,
           "tts_ttfb_ms": [
@@ -5617,6 +5809,8 @@
           "response_stdev_ms": null,
           "run_id": "replay-stop_before_ack-baseline-03",
           "scenario_id": "stop_before_ack",
+          "stt_audio_duration_ms": [],
+          "stt_audio_duration_p50_ms": null,
           "stt_duration_ms": [],
           "stt_duration_p50_ms": null,
           "tts_ttfb_ms": [
@@ -5669,6 +5863,8 @@
           "response_stdev_ms": null,
           "run_id": "replay-stop_before_ack-backchannel-03",
           "scenario_id": "stop_before_ack",
+          "stt_audio_duration_ms": [],
+          "stt_audio_duration_p50_ms": null,
           "stt_duration_ms": [],
           "stt_duration_p50_ms": null,
           "tts_ttfb_ms": [
@@ -5721,6 +5917,8 @@
           "response_stdev_ms": null,
           "run_id": "replay-stop_before_ack-jev_backchannel-03",
           "scenario_id": "stop_before_ack",
+          "stt_audio_duration_ms": [],
+          "stt_audio_duration_p50_ms": null,
           "stt_duration_ms": [],
           "stt_duration_p50_ms": null,
           "tts_ttfb_ms": [
