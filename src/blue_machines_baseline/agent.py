@@ -574,6 +574,12 @@ async def entrypoint(ctx: JobContext) -> None:
         backchannel_enabled=backchannel_enabled,
         scenario_id=run_context.scenario_id if run_context else None,
         run_id=run_context.run_id if run_context else None,
+        # The provider stack, so a report built from these events names the stack it
+        # measured instead of relying on when the log happened to be written.
+        stt_provider=settings.stt_provider,
+        llm_provider=settings.llm_provider,
+        tts_provider=settings.tts_provider,
+        eot_detector=settings.eot_detector,
     )
     session = AgentSession(
         vad=silero.VAD.load(),
