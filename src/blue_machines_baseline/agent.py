@@ -17,7 +17,7 @@ from livekit.agents import Agent, AgentServer, AgentSession, JobContext, cli, in
 from livekit.plugins import elevenlabs, google, groq, openai, silero
 from typesafe_sdk import AsyncTypeSafeClient
 
-from . import gemini_tts, groq_stt
+from . import gemini_tts
 from .backchannel import BackchannelEngine
 from .benchmark import parse_run_context
 from .config import ConfigurationError, Settings
@@ -96,7 +96,7 @@ def _metric_summary(metric: Any) -> dict[str, Any]:
     return result
 
 
-def create_stt(settings: Settings) -> inference.STT | groq.STT | groq_stt.STT:
+def create_stt(settings: Settings) -> inference.STT | groq.STT:
     """Create streaming LiveKit STT, with Groq retained as a final-only fallback."""
 
     if settings.stt_provider == "livekit_inference":
@@ -110,11 +110,6 @@ def create_stt(settings: Settings) -> inference.STT | groq.STT | groq_stt.STT:
     if settings.groq_api_key is None:
         raise ConfigurationError(
             f"GROQ_API_KEY is required when STT_PROVIDER={settings.stt_provider}"
-        )
-    if settings.stt_provider == "groq_rest":
-        return groq_stt.STT(
-            model=settings.groq_stt_model,
-            api_key=settings.groq_api_key.get_secret_value(),
         )
     return groq.STT(
         model=settings.groq_stt_model,
@@ -144,7 +139,9 @@ def create_llm(settings: Settings) -> google.LLM | openai.LLM:
     )
 
 
-def create_tts(settings: Settings) -> inference.TTS | elevenlabs.TTS | gemini_tts.TTS:
+def create_tts(
+    settings: Settings,
+) -> inference.TTS | elevenlabs.TTS | gemini_tts.TTS | groq.TTS:
     """Create LiveKit Inference TTS by default, with explicit direct providers."""
 
     if settings.tts_provider == "livekit_inference":
@@ -154,6 +151,17 @@ def create_tts(settings: Settings) -> inference.TTS | elevenlabs.TTS | gemini_tt
             language="en",
             api_key=settings.livekit_api_key.get_secret_value(),
             api_secret=settings.livekit_api_secret.get_secret_value(),
+        )
+
+    if settings.tts_provider == "groq_tts":
+        if settings.groq_api_key is None:
+            raise ConfigurationError("GROQ_API_KEY is required when TTS_PROVIDER=groq_tts")
+        # Native Groq speech (Orpheus). Groq blocks it until the account accepts
+        # the model's terms of use, which surfaces as a clear 400 from the API.
+        return groq.TTS(
+            model=settings.groq_tts_model,
+            voice=settings.groq_tts_voice,
+            api_key=settings.groq_api_key.get_secret_value(),
         )
 
     if settings.tts_provider == "gemini_tts":
@@ -318,6 +326,7 @@ def attach_backchanneling(
                 # threshold the policy actually compares against.
                 threshold=threshold if threshold is not None else engine.eot_threshold,
                 source="turn_detector",
+                model=detector.model,
             )
             engine.update_eot_probability(probability)
 

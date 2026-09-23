@@ -16,9 +16,9 @@ class ConfigurationError(ValueError):
     """Raised when the agent cannot start with the supplied environment."""
 
 
-TTSProvider = Literal["livekit_inference", "elevenlabs", "gemini_tts"]
+TTSProvider = Literal["livekit_inference", "elevenlabs", "gemini_tts", "groq_tts"]
 LLMProvider = Literal["gemini", "openrouter"]
-STTProvider = Literal["livekit_inference", "groq", "groq_rest"]
+STTProvider = Literal["livekit_inference", "groq"]
 EotDetector = Literal["livekit_inference", "final_transcript"]
 
 DEFAULT_OPENROUTER_FALLBACK_MODELS = (
@@ -63,6 +63,8 @@ class Settings(BaseModel):
     livekit_tts_voice: str = "Ashley"
     gemini_tts_model: str = "gemini-3.8-flash-tts"
     gemini_tts_voice: str = "Kore"
+    groq_tts_model: str = "canopylabs/orpheus-v1-english"
+    groq_tts_voice: str = "autumn"
     elevenlabs_api_key: SecretStr | None = None
     elevenlabs_tts_model: str = "eleven_turbo_v2_5"
     elevenlabs_voice_id: str = "ODq5zmih8GrVes37Dizd"
@@ -83,12 +85,10 @@ class Settings(BaseModel):
             "LIVEKIT_API_SECRET": source.get("LIVEKIT_API_SECRET", "").strip(),
         }
         stt_provider = source.get("STT_PROVIDER", "livekit_inference").strip().lower()
-        if stt_provider in {"groq", "groq_rest"}:
+        if stt_provider == "groq":
             required["GROQ_API_KEY"] = source.get("GROQ_API_KEY", "").strip()
         elif stt_provider != "livekit_inference":
-            raise ConfigurationError(
-                "STT_PROVIDER must be one of: livekit_inference, groq, groq_rest"
-            )
+            raise ConfigurationError("STT_PROVIDER must be one of: livekit_inference, groq")
         llm_provider = source.get("LLM_PROVIDER", "gemini").strip().lower()
         if llm_provider == "gemini":
             required["GEMINI_API_KEY"] = source.get("GEMINI_API_KEY", "").strip()
@@ -101,14 +101,21 @@ class Settings(BaseModel):
             required["ELEVENLABS_API_KEY (when TTS_PROVIDER=elevenlabs)"] = ""
         if tts_provider == "gemini_tts" and not source.get("GEMINI_API_KEY", "").strip():
             required["GEMINI_API_KEY (when TTS_PROVIDER=gemini_tts)"] = ""
+        if tts_provider == "groq_tts" and not source.get("GROQ_API_KEY", "").strip():
+            required["GROQ_API_KEY (when TTS_PROVIDER=groq_tts)"] = ""
         missing = [name for name, value in required.items() if not value]
         if missing:
             names = ", ".join(missing)
             raise ConfigurationError(f"Missing required environment variable(s): {names}")
 
-        if tts_provider not in {"livekit_inference", "elevenlabs", "gemini_tts"}:
+        if tts_provider not in {
+            "livekit_inference",
+            "elevenlabs",
+            "gemini_tts",
+            "groq_tts",
+        }:
             raise ConfigurationError(
-                "TTS_PROVIDER must be one of: livekit_inference, elevenlabs, gemini_tts"
+                "TTS_PROVIDER must be one of: livekit_inference, elevenlabs, gemini_tts, groq_tts"
             )
 
         livekit_url = required["LIVEKIT_URL"]
@@ -211,6 +218,8 @@ class Settings(BaseModel):
             livekit_tts_voice=source.get("LIVEKIT_TTS_VOICE", "Ashley").strip(),
             gemini_tts_model=source.get("GEMINI_TTS_MODEL", "gemini-3.8-flash-tts").strip(),
             gemini_tts_voice=source.get("GEMINI_TTS_VOICE", "Kore").strip(),
+            groq_tts_model=source.get("GROQ_TTS_MODEL", "canopylabs/orpheus-v1-english").strip(),
+            groq_tts_voice=source.get("GROQ_TTS_VOICE", "autumn").strip(),
             elevenlabs_api_key=(
                 SecretStr(source["ELEVENLABS_API_KEY"].strip())
                 if source.get("ELEVENLABS_API_KEY", "").strip()

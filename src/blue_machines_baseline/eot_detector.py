@@ -128,6 +128,13 @@ class EotDetector:
         return self._threshold
 
     @property
+    def model(self) -> str | None:
+        """Which turn-detector model is answering, so the event can name it."""
+
+        stream = self._stream
+        return str(getattr(stream, "model", "")) or None if stream is not None else None
+
+    @property
     def available(self) -> bool:
         return self._stream is not None and not self._closed
 

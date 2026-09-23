@@ -3,7 +3,7 @@ import pickle
 from livekit.agents import inference
 from livekit.plugins import elevenlabs, google, groq
 
-from blue_machines_baseline import gemini_tts, groq_stt
+from blue_machines_baseline import gemini_tts
 from blue_machines_baseline.agent import create_llm, create_stt, create_tts, entrypoint
 from blue_machines_baseline.config import Settings
 
@@ -79,18 +79,26 @@ def test_room_entrypoint_is_pickle_safe_for_livekit_job_processes() -> None:
     assert pickle.loads(pickle.dumps(entrypoint)) is entrypoint
 
 
-def test_groq_rest_is_selected_as_a_batch_stt_provider() -> None:
-    settings = settings_for_provider_tests(
-        STT_PROVIDER="groq_rest", GROQ_STT_MODEL="whisper-large-v3"
-    )
+def test_groq_stt_is_batch_only() -> None:
+    settings = settings_for_provider_tests(STT_PROVIDER="groq", GROQ_STT_MODEL="whisper-large-v3")
 
     stt = create_stt(settings)
 
-    assert isinstance(stt, groq_stt.STT)
+    assert isinstance(stt, groq.STT)
     assert stt.model == "whisper-large-v3"
-    assert stt.provider == "groq"
+    # Batch transcription through the OpenAI-compatible endpoint: no interim
+    # transcripts, which is why Jev mode cannot run on this provider.
     assert stt.capabilities.streaming is False
     assert stt.capabilities.interim_results is False
+
+
+def test_groq_tts_uses_the_bundled_plugin() -> None:
+    settings = settings_for_provider_tests(TTS_PROVIDER="groq_tts")
+
+    tts = create_tts(settings)
+
+    assert isinstance(tts, groq.TTS)
+    assert tts.model == "canopylabs/orpheus-v1-english"
 
 
 def test_gemini_tts_is_selected_as_a_direct_tts_provider() -> None:

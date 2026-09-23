@@ -1,15 +1,12 @@
 import asyncio
 import base64
-import io
 import json
 import struct
-import wave
 
 import pytest
 from livekit import rtc
-from livekit.agents import stt
 
-from blue_machines_baseline import gemini_tts, groq_stt
+from blue_machines_baseline import gemini_tts
 from blue_machines_baseline.benchmark import SCENARIO_BY_ID
 from blue_machines_baseline.config import ConfigurationError, Settings
 from blue_machines_baseline.simulator import (
@@ -91,66 +88,6 @@ def test_gemini_tts_rejects_an_empty_waveform(monkeypatch) -> None:
 def test_gemini_tts_requires_an_api_key() -> None:
     with pytest.raises(ValueError):
         gemini_tts.TTS(api_key="")
-
-
-def test_groq_stt_returns_a_final_transcript(monkeypatch) -> None:
-    monkeypatch.setattr(
-        groq_stt,
-        "_post_transcription",
-        lambda **_kwargs: {"text": "  hello there  "},
-    )
-    stt_client = groq_stt.STT(api_key="key", model="whisper-large-v3-turbo")
-
-    frames = [
-        rtc.AudioFrame(
-            data=pcm_bytes(320),
-            sample_rate=16000,
-            num_channels=1,
-            samples_per_channel=320,
-        )
-        for _ in range(50)
-    ]
-    event = asyncio.run(stt_client.recognize(frames))
-
-    assert event.type == stt.SpeechEventType.FINAL_TRANSCRIPT
-    assert event.alternatives[0].text == "hello there"
-    assert event.alternatives[0].end_time == pytest.approx(1.0, abs=0.01)
-    assert stt_client.capabilities.streaming is False
-    assert stt_client.capabilities.interim_results is False
-
-
-def test_groq_stt_surfaces_provider_failures(monkeypatch) -> None:
-    def boom(**_kwargs: object) -> dict:
-        raise groq_stt.GroqSTTError("Groq transcription HTTP 403")
-
-    monkeypatch.setattr(groq_stt, "_post_transcription", boom)
-    stt_client = groq_stt.STT(api_key="key")
-    frames = [
-        rtc.AudioFrame(
-            data=pcm_bytes(320), sample_rate=16000, num_channels=1, samples_per_channel=320
-        )
-    ]
-
-    with pytest.raises(groq_stt.GroqSTTError):
-        asyncio.run(stt_client.recognize(frames))
-
-
-def test_wav_bytes_from_buffer_produces_a_readable_clip() -> None:
-    frames = [
-        rtc.AudioFrame(
-            data=pcm_bytes(1600), sample_rate=16000, num_channels=1, samples_per_channel=1600
-        )
-        for _ in range(2)
-    ]
-
-    audio, duration = groq_stt.wav_bytes_from_buffer(frames)
-
-    with wave.open(io.BytesIO(audio)) as handle:
-        assert handle.getframerate() == 16000
-        assert handle.getnchannels() == 1
-        assert handle.getsampwidth() == 2
-        assert handle.getnframes() == 3200
-    assert duration == pytest.approx(0.2, abs=0.001)
 
 
 def test_scenario_clips_round_trip_through_the_driver_helpers(tmp_path) -> None:

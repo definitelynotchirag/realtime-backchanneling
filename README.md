@@ -30,10 +30,14 @@ offline policy replay, the comparison table, and the visual run timeline.
 - A scripted scenario driver (`blue-machines-scenario`) that renders each scenario's
   utterance once, then drives every (scenario, mode, repeat) through real LiveKit rooms
   with real audio - no human at the microphone, and no dependence on speaking twice.
-- Direct provider adapters for environments where LiveKit Inference is unavailable:
-  Gemini TTS (`TTS_PROVIDER=gemini_tts`) and Groq batch STT (`STT_PROVIDER=groq_rest`).
+- Provider options for environments where LiveKit Inference is unavailable: a direct
+  Gemini TTS adapter (`TTS_PROVIDER=gemini_tts`), native Groq speech
+  (`TTS_PROVIDER=groq_tts`, Orpheus), and Groq batch STT (`STT_PROVIDER=groq`, which is
+  the bundled plugin's non-streaming path).
 - A real end-of-turn probability for the policy, from LiveKit's public streaming turn
-  detector running on the user's audio, with an automatic final-transcript fallback.
+  detector running on the user's audio, with an automatic final-transcript fallback. Each
+  `eot_prediction` event names the model that answered (`turn-detector-v1-mini` locally,
+  `turn-detector-v1` when the gateway serves it).
 - FastAPI `/health`, `/events`, `/benchmark/report`, `/benchmark/replay`, and
   `/livekit/token` endpoints.
 - Explicit tests for cooldown, EOT suppression, failed TTS, rapid transitions, and
@@ -227,9 +231,11 @@ comes from the agent audio output playback marker, not merely creation of a spee
 LLM TTFT, STT duration, and TTS TTFB. Transcript text itself is not stored; only
 final/interim status and counts are recorded.
 
-End-of-turn probability is measured for real. `eot_prediction` records the probability and
-the threshold it was compared against, produced by LiveKit's public streaming turn detector
-running on the user's audio (`EOT_DETECTOR=livekit_inference`). If that detector cannot be
+End-of-turn probability is measured for real. `eot_prediction` records the probability, the
+threshold it was compared against, and the detector model that produced it, from LiveKit's
+public streaming turn detector running on the user's audio
+(`EOT_DETECTOR=livekit_inference`). Verified directly by pushing recorded speech and
+trailing silence into the detector stream and reading the predictions back. If that detector cannot be
 used, the session emits `eot_detector_unavailable` once and the policy keeps working on the
 binary final-transcript fallback.
 
@@ -292,14 +298,16 @@ The committed sweep was recorded with the direct providers, because LiveKit Infe
 returned HTTP 429 and ElevenLabs 402 from this machine:
 
 ```bash
-STT_PROVIDER=groq_rest TTS_PROVIDER=gemini_tts EOT_DETECTOR=livekit_inference \
+STT_PROVIDER=groq TTS_PROVIDER=gemini_tts EOT_DETECTOR=livekit_inference \
   uv run blue-machines-agent dev
 uv run blue-machines-scenario --scenarios all --modes baseline,backchannel --repeats 3
 ```
 
-Jev mode is not part of that sweep: it requires interim transcripts, and the reachable
-Groq endpoint is final-only. With a streaming STT configured, add `jev_backchannel` to
-`--modes` and the same driver covers all three policies.
+Jev mode is not part of that sweep: it requires interim transcripts, and Groq's STT is
+batch-only. With a streaming STT configured, add `jev_backchannel` to `--modes` and the
+same driver covers all three policies. `TTS_PROVIDER=groq_tts` (native Orpheus speech)
+becomes an option as soon as the Groq account accepts that model's terms; until then the
+API returns `model_terms_required`, so the sweep above uses the Gemini adapter.
 
 ## Fairness and race analysis
 
@@ -444,9 +452,9 @@ uv run python -m compileall -q src tests
 uv run python -c "import blue_machines_baseline.agent; import blue_machines_baseline.api"
 ```
 
-These checks run without provider credentials (103 tests). A real room conversation needs
-valid LiveKit, Gemini, and a speech provider: LiveKit Inference, ElevenLabs, or the direct
-Gemini TTS adapter. Jev mode additionally needs `TYPESAFE_API_KEY` and a streaming STT with
-interim results; the Groq REST provider is final-only, so Jev mode is rejected with a clear
-error when it is selected with that provider. The replay runner, analyzer, API report, and
-browser build remain usable without any provider service.
+These checks run without provider credentials (101 tests). A real room conversation needs
+valid LiveKit, an LLM key, and a speech provider: LiveKit Inference, ElevenLabs, the direct
+Gemini TTS adapter, or native Groq speech. Jev mode additionally needs `TYPESAFE_API_KEY`
+and a streaming STT with interim results; Groq's STT is batch-only, so Jev mode is rejected
+with a clear error when it is selected with that provider. The replay runner, analyzer, API
+report, and browser build remain usable without any provider service.
