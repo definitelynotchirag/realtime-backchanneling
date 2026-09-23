@@ -121,6 +121,21 @@ continuation, list or story, explanation or context, thinking or uncertainty,
 explicitly continuing, question or ending, and emotional or ambiguous speech.
 The last two categories are fail-silent, and the code maps the approved speech
 function to its matching phrase instead of accepting an arbitrary phrase.
+The three phrases are pre-rendered, not synthesized during the turn: the worker loads
+`assets/backchannels/{mm-hmm,uh-huh,i-see}.wav` once at start, which is why a cue is
+audible ~20 ms after the policy approves it and costs no speech request.
+`assets/backchannels/manifest.json` records the provider, model and duration that produced
+them. Regenerate them in the worker's own voice with
+
+```bash
+uv run python scripts/generate-backchannel-clips.py
+```
+
+The script follows `TTS_PROVIDER` and the agent's voice, trims leading and trailing
+silence, normalizes level, writes the rate the room plays out, and refuses to write a cue
+longer than 1.5 s - a long acknowledgement stops being an acknowledgement and holds the
+floor. The worker must be restarted afterwards: the clips are read once per process.
+
 During a genuinely long continuation, Jev may approve up to four additional cues after
 substantial new speech (the controller allows five per turn in total, with roughly seven
 new words required between cues); short turns still get a single cue. It stays silent
