@@ -67,6 +67,35 @@ uv sync --extra dev
 sudo systemctl restart blue-machines-api blue-machines-dashboard blue-machines-worker
 ```
 
+## Continuous deployment
+
+Pushes to `master` deploy automatically (`.github/workflows/deploy.yml`):
+
+1. a **self-hosted GitHub runner** on this host (systemd unit
+   `actions.runner.definitelynotchirag-realtime-backchanneling.vps-ec2.service`)
+   picks up the push — it polls GitHub over outbound HTTPS only, so no
+   inbound ports or SSH keys in GitHub are involved;
+2. `git reset --hard origin/master` in `~/realtime-voice-chat`, `uv sync`;
+3. `uv run pytest` — a failing suite stops the deploy;
+4. `npm ci && npm run build` in `dashboard/`;
+5. `deploy/Caddyfile` and the systemd units are re-installed and validated;
+6. the worker, API, and dashboard restart, then health checks run.
+
+A full deploy takes about 30 seconds. Only pushes to `master` and manual
+`workflow_dispatch` trigger it (never fork pull requests, so untrusted code
+cannot run on the host).
+
+Useful commands:
+
+```bash
+gh run list --limit 5                # recent deploys (from any machine)
+gh run watch <run-id>                # follow one live
+sudo journalctl -u actions.runner.definitelynotchirag-realtime-backchanneling.vps-ec2 -f
+```
+
+Still manual by design: secret changes (`.env` is not in the repo), runner
+software updates, and security-group changes.
+
 ## Operations
 
 ```bash
