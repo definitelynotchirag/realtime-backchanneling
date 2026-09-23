@@ -738,7 +738,9 @@ export default function Workspace() {
   const latestVoiceEvent = [...sessionEvents].reverse().find((event) => event.name === "user_speech_started" || event.name === "user_speech_ended");
   // A speech provider that rejects audio leaves the agent silent with a perfectly
   // good answer in hand, which reads as "the agent is broken". Say what happened.
-  const speechFailure = sessionEvents.some((event) => event.name === "session_error" && event.data.error_type === "TTSError");
+  const speechFailure = [...sessionEvents]
+    .reverse()
+    .find((event) => event.name === "session_error" && event.data.error_type === "TTSError");
   const timelineMax = Math.max(1000, ...timelineEvents.map((event) => event.elapsed_ms || 0));
   const compareEvents = useMemo(() => {
     if (!compareRunId) return [];
@@ -780,7 +782,17 @@ export default function Workspace() {
               <div className="state-readouts"><div><span className="readout-label">VOICE ACTIVITY</span><strong>{voiceActivity}</strong></div><div><span className="readout-label">AGENT AUDIO</span><strong>{audioBlocked ? "BLOCKED" : liveState === "connected" ? agentSpeaking ? "PLAYING" : "READY" : "OFFLINE"}</strong></div><div><span className="readout-label">LAST EVENT</span><strong>{latestEvent ? eventLabel(latestEvent.name) : "—"}</strong></div></div>
               <div className="session-controls"><button className="primary-control" onClick={liveState === "connected" ? stopConversation : startConversation} disabled={liveState === "connecting"}>{liveState === "connected" ? "END CONVERSATION" : liveState === "connecting" ? "CONNECTING" : "START CONVERSATION"}<Icon name={liveState === "connected" ? "stop" : "play"} /></button><button className="secondary-control" onClick={micState === "idle" ? startMicrophone : stopMicrophone} disabled={liveState === "connected"}>{micState === "active" ? "STOP MIC CHECK" : micState === "pending" ? "CANCEL REQUEST" : "CHECK MICROPHONE"}<Icon name={micState === "idle" ? "mic" : "stop"} /></button>{audioBlocked && <button className="audio-unblock" onClick={() => void roomRef.current?.startAudio()}>ENABLE AUDIO</button>}</div>
               {(micError || liveError) && <p className="error-line" role="alert">ERR / {micError || liveError}</p>}
-              {speechFailure && !liveError && <p className="error-line" role="alert">SPEECH PROVIDER REJECTED THE AUDIO / the agent generated a reply but could not speak it - check the speech quota (Groq allows 3600 speech tokens per day). The cue audio is pre-generated, so backchannels still play.</p>}
+              {speechFailure && !liveError && (
+                <p className="error-line" role="alert">
+                  SPEECH PROVIDER REJECTED THE AUDIO / the agent generated a reply but could not
+                  speak it: the speech provider refused the request, which is usually quota,
+                  credentials, or a rate limit. The cue audio is pre-generated, so backchannels
+                  still play.
+                  {typeof speechFailure.data.error_message === "string" && speechFailure.data.error_message
+                    ? ` Provider said: ${speechFailure.data.error_message}`
+                    : ""}
+                </p>
+              )}
               <p className="privacy-line"><Icon name="lock" size={12} /> AUDIO SENT TO LIVEKIT ONLY DURING A CONVERSATION</p>
               <div className="remote-audio-host" ref={audioHost} aria-hidden="true" />
             </div>

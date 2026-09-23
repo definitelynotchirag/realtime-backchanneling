@@ -319,7 +319,13 @@ def attach_instrumentation(
     @session.on("error")
     def _on_error(event: Any) -> None:
         error = getattr(event, "error", event)
-        record_if_open("session_error", error_type=type(error).__name__)
+        record_if_open(
+            "session_error",
+            error_type=type(error).__name__,
+            # The provider's own refusal is the actionable part ("no credits", "rate
+            # limited"), and without it the operator is left guessing which limit was hit.
+            error_message=str(error)[:300],
+        )
 
 
 def attach_backchanneling(
