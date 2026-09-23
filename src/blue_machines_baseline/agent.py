@@ -69,7 +69,8 @@ class BaselineAssistant(Agent):
         if not self._greet:
             return
         await self.session.generate_reply(
-            instructions="Greet the user briefly and ask how you can help today."
+            # Short on purpose: this is synthesised once per room.
+            instructions="Greet the user in four words or fewer."
         )
 
 

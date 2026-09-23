@@ -90,8 +90,10 @@ class Settings(BaseModel):
     elevenlabs_tts_model: str = "eleven_turbo_v2_5"
     elevenlabs_voice_id: str = "ODq5zmih8GrVes37Dizd"
     scenario_audio_dir: Path = Path("assets/scenarios")
+    # Speech is billed per audio token by some providers (Groq's Orpheus allows
+    # 3600 per day), so the default answer length is deliberately tiny.
     agent_instructions: str = (
-        "You are a friendly voice assistant. Keep spoken answers concise and natural."
+        "You are a friendly voice assistant. Reply in one short sentence of at most ten words."
     )
     event_log_path: Path = Path("outputs/baseline-events.jsonl")
 
