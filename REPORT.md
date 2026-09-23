@@ -210,18 +210,21 @@ from the worker's log) and the report built from it,
 `outputs/benchmark-report-provider.json` — 35 runs, four scenarios, both arms for three of
 them.
 
-**Measured outcome (baseline → timer backchannel):** response P50 6349 ms → 4661 ms
-(n=18/13, σ≈2.0-2.6 s), P95 11095 ms → 9059 ms, audible cues 0 → 7, cues per long turn
-0.00 → 1.00, cue decision→audible 1.6 ms, and **0 delayed responses, 0 collisions,
-0 cancellations in both arms**. Read with the spread: no measurable slowdown, and no
-turn-taking damage in the sample. The UI shows the same numbers.
+**Measured outcome (baseline → timer backchannel), now on a single all-Groq stack:**
+response P50 1276 ms → 781 ms (n=13/12, σ 1.58 s → 0.63 s), P95 4407 ms → 1949 ms, audible
+cues 0 → 11, cues per long turn 0.00 → 0.89, cue decision→audible 1.5 ms, LLM TTFT and TTS
+TTFB identical within 5 ms across arms, and **0 delayed responses and 0 collisions in both
+arms** (one cancelled cue). No measurable slowdown, and no turn-taking damage in the sample.
+The UI shows the same numbers.
 
 Three limits are stated rather than hidden:
 
-1. **The sweep stopped early: the TTS provider's daily quota ran out** (HTTP 429 partway
-   through `middle_pause`). `fast_speaker`, `noisy_audio`, `multiple_backchannels` and
-   `stop_before_ack` therefore have no scripted runs, and n is 13-18 per arm — enough for a
-   P50 with a reported σ, not enough for a trustworthy P95.
+1. **The sweep stopped early: the speech provider's daily budget ran out.** Orpheus on the
+   free tier allows 3600 speech tokens/day (~70 short utterances) and the sweep spent it, so
+   `noisy_audio`, `multiple_backchannels` and `stop_before_ack` have no measured runs. n is
+   12-13 per arm — enough for a P50 with a reported σ, not for a trustworthy P95. Scripted
+   runs now skip the greeting to halve the budget per sweep, and the driver aborts after
+   three consecutive silent runs instead of recording provider failures as data.
 2. **Jev mode is not in the sweep.** Jev requires interim transcripts, and the only STT
    this environment can reach (Groq batch REST) is final-only; the worker refuses the
    combination with a clear error rather than running a half-broken mode. Jev remains

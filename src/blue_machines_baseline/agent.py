@@ -58,7 +58,16 @@ async def _cached_clip_stream(frame: rtc.AudioFrame) -> AsyncIterator[rtc.AudioF
 class BaselineAssistant(Agent):
     """A deliberately small assistant used as the normal-agent comparison point."""
 
+    def __init__(self, *, instructions: str, greet: bool = True) -> None:
+        super().__init__(instructions=instructions)
+        # A scripted benchmark run knows what the user is about to say, and every
+        # greeting costs a speech request as well as wall-clock time. Callers can
+        # turn it off; the live demo keeps it.
+        self._greet = greet
+
     async def on_enter(self) -> None:
+        if not self._greet:
+            return
         await self.session.generate_reply(
             instructions="Greet the user briefly and ask how you can help today."
         )
@@ -577,7 +586,10 @@ async def entrypoint(ctx: JobContext) -> None:
     ctx.add_shutdown_callback(finalize)
     try:
         await session.start(
-            agent=BaselineAssistant(instructions=settings.agent_instructions),
+            agent=BaselineAssistant(
+                instructions=settings.agent_instructions,
+                greet=run_context.greet if run_context is not None else True,
+            ),
             room=ctx.room,
             room_options=room_io.RoomOptions(),
         )

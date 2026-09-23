@@ -295,20 +295,18 @@ in `assets/scenarios/` with a sidecar recording the text, voice and measured dur
 a re-run needs no provider call for the user's side. The worker must be running
 (`uv run blue-machines-agent dev`); timings come from its event log, not from the driver.
 
-The committed sweep was recorded with the direct providers, because LiveKit Inference
-returned HTTP 429 and ElevenLabs 402 from this machine:
+The committed sweep was recorded on one provider stack, after LiveKit Inference returned
+HTTP 429 and ElevenLabs 402 from this machine:
 
 ```bash
-STT_PROVIDER=groq TTS_PROVIDER=gemini_tts EOT_DETECTOR=livekit_inference \
+STT_PROVIDER=groq LLM_PROVIDER=groq TTS_PROVIDER=groq_tts EOT_DETECTOR=livekit_inference \
   uv run blue-machines-agent dev
 uv run blue-machines-scenario --scenarios all --modes baseline,backchannel --repeats 3
 ```
 
 Jev mode is not part of that sweep: it requires interim transcripts, and Groq's STT is
 batch-only. With a streaming STT configured, add `jev_backchannel` to `--modes` and the
-same driver covers all three policies. `TTS_PROVIDER=groq_tts` (native Orpheus speech)
-becomes an option as soon as the Groq account accepts that model's terms; until then the
-API returns `model_terms_required`, so the sweep above uses the Gemini adapter.
+same driver covers all three policies.
 
 ## Fairness and race analysis
 
@@ -361,48 +359,39 @@ cue the moment the user yields.
 
 ### The measured result
 
-`outputs/benchmark-report-provider.json` (from `outputs/benchmark-events.jsonl`, the
-scripted sweep: real LiveKit rooms with real Groq STT, Gemini LLM and Gemini TTS, 35 runs
-across four scenarios, three of them with both arms) reads:
+`outputs/benchmark-report-provider.json` (built from `outputs/benchmark-events.jsonl`, the
+scripted sweep on the **all-Groq stack**: Whisper STT, `openai/gpt-oss-120b`, Orpheus TTS;
+27 measured runs across five scenarios, four of them complete at three repeats per mode)
+reads:
 
 | Metric | Baseline | Timer backchannel | Delta |
 |---|---|---|---|
-| Response P50 | 6349 ms *(n=18)* | 4661 ms *(n=13)* | −1688 ms |
-| Response P95 | 11095 ms | 9059 ms | −2036 ms |
-| Response σ | 2602 ms | 1967 ms | −635 ms |
-| Audible cues | **0** | **7** | +7 |
-| Cues per long turn | 0.00 | **1.00** | +1.00 |
-| Backchannel decision → audible | — | **1.6 ms** | — |
+| Response P50 | 1276 ms *(n=13)* | 781 ms *(n=12)* | −495 ms |
+| Response P95 | 4407 ms | 1949 ms | −2458 ms |
+| Response σ | 1582 ms | 628 ms | −954 ms |
+| Audible cues | **0** | **11** | +11 |
+| Cues per long turn | 0.00 | **0.89** | +0.89 |
+| Backchannel decision → audible | — | **1.5 ms** | — |
+| LLM TTFT P50 | 468 ms | 471 ms | +3 ms |
+| TTS TTFB P50 | 220 ms | 214 ms | −5 ms |
 | Delayed responses | 0 | 0 | 0 |
 | End-of-turn collisions | 0 | 0 | 0 |
-| Cancelled cues | 0 | 0 | 0 |
-| Unpaired turns | 6 | 3 | −3 |
+| Cancelled cues | 0 | 1 | +1 |
 
-**Did backchanneling make the agent slower? No measurable slowdown.** The backchannel arm
-is 1.7 s faster at P50, but the spread is ~2 s, so the honest reading is *no difference
-inside the noise* — and the counters that would reveal damage (delayed responses,
-collisions, cancellations) are zero in both arms. That is the whole claim this experiment
-supports, and it is the claim the UI shows.
+**Did backchanneling make the agent slower? No.** The provider pipeline is measurably the
+same in both arms (LLM TTFT and TTS TTFB within 5 ms), the backchannel arm is 495 ms faster
+at P50 and 2.5 s faster at P95, and the counters that would reveal damage — delayed
+responses, collisions — are zero in both. The 781 ms P50 is the real answer latency of the
+Groq stack; the earlier 4.6 s figure was a quota-blocked speech provider, not the policy.
 
-Three details worth reading together:
-
-- **Baseline never cues** (0 audible) while the backchannel arm cues exactly once per long
-  turn (1.00). Restraint and effect are both visible.
-- **The cue costs 1.6 ms to become audible** because it plays a pre-generated clip instead
-  of calling TTS. That is the measured answer to "what if generating *mm-hmm* takes
-  500 ms?" - it does not, because it is never generated at playback time; the trade-off is
-  a fixed three-phrase vocabulary (`mm-hmm`, `uh-huh`, `I see`) that must exist for every
-  supported voice.
-- **No cue ever reached the collision window.** Short turns (`short_answer`,
-  `stop_before_ack`) produce a suppression inside the policy instead: the real turn
-  detector reports a high end-of-turn probability while the user is still speaking and
-  `backchannel_suppressed_eot` fires before any audio starts.
-
-Limits of this sweep, stated plainly: the TTS provider's daily quota ran out partway
-through, so `fast_speaker`, `noisy_audio`, `multiple_backchannels` and `stop_before_ack`
-have no scripted runs; Jev mode is absent because the reachable STT is final-only; and
-`n` is 13-18 per arm, which is enough for a P50 with a reported σ and not enough for a
-trustworthy P95.
+Limits of this sweep, stated plainly: Orpheus on the free tier allows **3600 speech tokens
+per day** (and 100 requests/day), which is roughly seventy short utterances; the sweep spent
+that budget and stopped, so `noisy_audio`, `multiple_backchannels` and `stop_before_ack` have
+no measured runs, and `n` is 12-13 per arm — enough for a P50 with a reported σ, not for a
+trustworthy P95. Jev mode is absent because the reachable STT is final-only. Scripted runs
+now skip the greeting (`--greet` re-enables it), which halves the speech budget a sweep
+needs, and the driver stops after three consecutive silent runs instead of recording provider
+failures as measurements.
 
 **Where any extra latency comes from.** The policy itself is not on the response path:
 timers, the cue, and its cancellation all live beside the conversation, and the

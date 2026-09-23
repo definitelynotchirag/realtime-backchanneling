@@ -58,6 +58,9 @@ NO_AGENT_GRACE_SECONDS = 20.0
 GREETING_QUIET_SECONDS = 1.0
 """Agent audio silence that marks the end of its greeting before the clip plays."""
 
+NO_GREETING_GRACE_SECONDS = 2.5
+"""How long to let the worker settle when the greeting is disabled."""
+
 RESPONSE_QUIET_SECONDS = 1.0
 """Agent audio silence used as a fallback completion signal."""
 
@@ -306,12 +309,15 @@ def load_clip(scenario_id: str, directory: Path) -> ScenarioClip:
     )
 
 
-def build_token(settings: Settings, *, scenario_id: str, mode: str, run_id: str) -> tuple[str, str]:
+def build_token(
+    settings: Settings, *, scenario_id: str, mode: str, run_id: str, greet: bool = False
+) -> tuple[str, str]:
     """Mint a participant token that explicitly dispatches the worker."""
 
     room_name = f"blue-machines-{scenario_id}-{run_id}"
     metadata = json.dumps(
-        {"scenario_id": scenario_id, "mode": mode, "run_id": run_id}, separators=(",", ":")
+        {"scenario_id": scenario_id, "mode": mode, "run_id": run_id, "greet": greet},
+        separators=(",", ":"),
     )
     token = (
         livekit_api.AccessToken(
@@ -360,11 +366,14 @@ async def drive_one(
     mode: str,
     repeat: int,
     max_wait: float,
+    greet: bool = False,
 ) -> RunOutcome:
     """Run one scripted scenario through a real room."""
 
     run_id = f"{scenario_id}-{mode}-{repeat:02d}-{uuid.uuid4().hex[:6]}"
-    room_name, token = build_token(settings, scenario_id=scenario_id, mode=mode, run_id=run_id)
+    room_name, token = build_token(
+        settings, scenario_id=scenario_id, mode=mode, run_id=run_id, greet=greet
+    )
     clip = load_clip(scenario_id, settings.scenario_audio_dir)
     frames = with_pauses(read_clip(clip.path), clip.pause_durations_seconds)
 
@@ -426,10 +435,20 @@ async def drive_one(
             logger.warning("no worker joined %s", room_name)
 
         quiet_deadline = time.monotonic() + max_wait
+        joined_at = time.monotonic()
         while time.monotonic() < quiet_deadline:
             await asyncio.sleep(0.1)
             last = state["last_agent_audio"]
             if state["agent_spoke"] and last and time.monotonic() - last > GREETING_QUIET_SECONDS:
+                break
+            # With the greeting turned off there is nothing to wait for: a short
+            # grace is enough to let the worker finish attaching, and then the
+            # clip can play instead of idling out the whole deadline.
+            if (
+                not greet
+                and state["agent_joined"]
+                and time.monotonic() - joined_at > NO_GREETING_GRACE_SECONDS
+            ):
                 break
 
         logger.info("playing %s into %s (%.2fs)", clip.path.name, room_name, clip.duration_seconds)
@@ -483,9 +502,17 @@ async def _delete_room(settings: Settings, room_name: str) -> None:
 
 
 async def run_benchmark(
-    settings: Settings, *, scenario_ids: list[str], modes: list[str], repeats: int, max_wait: float
+    settings: Settings,
+    *,
+    scenario_ids: list[str],
+    modes: list[str],
+    repeats: int,
+    max_wait: float,
+    greet: bool = False,
+    max_silent_runs: int = 3,
 ) -> list[RunOutcome]:
     outcomes: list[RunOutcome] = []
+    silent_streak = 0
     for scenario_id in scenario_ids:
         for mode in modes:
             for repeat in range(1, repeats + 1):
@@ -495,6 +522,7 @@ async def run_benchmark(
                     mode=mode,
                     repeat=repeat,
                     max_wait=max_wait,
+                    greet=greet,
                 )
                 outcomes.append(outcome)
                 print(
@@ -504,6 +532,17 @@ async def run_benchmark(
                     f"{outcome.elapsed_seconds:6.1f}s",
                     flush=True,
                 )
+                silent_streak = 0 if outcome.agent_spoke else silent_streak + 1
+                if silent_streak >= max_silent_runs:
+                    # A run with no agent audio is not a measurement: it is a
+                    # provider failure (quota, rate limit) or a broken worker.
+                    # Stop instead of filling the log with empty runs.
+                    print(
+                        f"stopping: {silent_streak} consecutive runs produced no agent audio "
+                        "- check provider quota and the worker log",
+                        flush=True,
+                    )
+                    return outcomes
     return outcomes
 
 
@@ -529,6 +568,17 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--repeats", type=int, default=1, help="runs per (scenario, mode)")
     parser.add_argument(
         "--max-wait", type=float, default=90.0, help="seconds to wait for the agent's answer"
+    )
+    parser.add_argument(
+        "--greet",
+        action="store_true",
+        help="let the worker greet on entry (costs one speech request per run)",
+    )
+    parser.add_argument(
+        "--max-silent-runs",
+        type=int,
+        default=3,
+        help="stop the sweep after this many consecutive runs produced no agent audio",
     )
     return parser.parse_args(argv)
 
@@ -574,6 +624,8 @@ def main(argv: list[str] | None = None) -> None:
             modes=modes,
             repeats=args.repeats,
             max_wait=args.max_wait,
+            greet=args.greet,
+            max_silent_runs=args.max_silent_runs,
         )
     )
     answered = sum(1 for outcome in outcomes if outcome.agent_spoke)

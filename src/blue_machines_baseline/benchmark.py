@@ -112,6 +112,7 @@ class RunContext:
     scenario_id: str
     mode: Mode
     run_id: str
+    greet: bool = True
 
 
 def parse_run_context(metadata: str | None) -> RunContext | None:
@@ -132,7 +133,13 @@ def parse_run_context(metadata: str | None) -> RunContext | None:
         return None
     if mode not in MODES:
         return None
-    return RunContext(scenario_id=scenario_id, mode=mode, run_id=run_id)
+    greet = value.get("greet")
+    return RunContext(
+        scenario_id=scenario_id,
+        mode=mode,
+        run_id=run_id,
+        greet=True if greet is None else bool(greet),
+    )
 
 
 @dataclass(frozen=True)
