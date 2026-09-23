@@ -2,6 +2,7 @@ import asyncio
 import base64
 import json
 import struct
+from pathlib import Path
 
 import pytest
 from livekit import rtc
@@ -10,6 +11,7 @@ from blue_machines_baseline import gemini_tts
 from blue_machines_baseline.benchmark import SCENARIO_BY_ID
 from blue_machines_baseline.config import ConfigurationError, Settings
 from blue_machines_baseline.simulator import (
+    EventLogTail,
     pcm_to_wav,
     read_clip,
     silence_frames,
@@ -186,3 +188,65 @@ def test_audio_is_base64_decodable_as_the_provider_returns_it() -> None:
     # Guards the decode step against a change in the payload shape.
     encoded = base64.b64encode(pcm_bytes(4)).decode()
     assert base64.b64decode(encoded) == pcm_bytes(4)
+
+
+def _tail(tmp_path, *before: dict) -> tuple[EventLogTail, Path]:
+    """Open a tail over the log, optionally with records already written.
+
+    The driver opens the tail once the clip has finished playing, so records that
+    predate it are deliberately not replayed.
+    """
+
+    path = tmp_path / "events.jsonl"
+    path.write_text("".join(json.dumps(record) + "\n" for record in before))
+    return EventLogTail(path), path
+
+
+def _append(path, *records: dict) -> None:
+    with path.open("a", encoding="utf-8") as stream:
+        for record in records:
+            stream.write(json.dumps(record) + "\n")
+
+
+def test_event_log_tail_does_not_mistake_a_cue_for_the_answer(tmp_path) -> None:
+    """A cancelled cue ends without a start, and it must not end the run.
+
+    Six sweep runs were cut off mid-answer because a cue that played as the user
+    stopped looked like a reply that had already finished.
+    """
+
+    tail, path = _tail(tmp_path)
+    _append(
+        path,
+        {"run_id": "r1", "name": "backchannel_audio_started", "elapsed_ms": 100},
+        {"run_id": "r1", "name": "backchannel_cancelled", "elapsed_ms": 200},
+        {"run_id": "r1", "name": "agent_response_ended", "elapsed_ms": 300},
+    )
+
+    assert tail.poll("r1") is None
+    assert tail.response_seen is False
+
+
+def test_event_log_tail_ends_on_the_answer_finishing(tmp_path) -> None:
+    tail, path = _tail(tmp_path)
+    _append(path, {"run_id": "r1", "name": "agent_response_started", "elapsed_ms": 100})
+
+    assert tail.poll("r1") is None  # starting is not finishing
+    assert tail.response_seen is True
+
+    _append(path, {"run_id": "r1", "name": "agent_response_ended"})
+
+    assert tail.poll("r1") == "agent_response_ended"
+
+
+def test_event_log_tail_ignores_other_runs_and_shorter_logs(tmp_path) -> None:
+    tail, path = _tail(tmp_path, {"run_id": "r1", "name": "session_stopped"})
+    _append(path, {"run_id": "other", "name": "agent_response_ended"})
+
+    # The other run's event is not this run's, and the record written before the
+    # tail opened is not replayed.
+    assert tail.poll("r1") is None
+
+    _append(path, {"run_id": "r1", "name": "session_stopped"})
+
+    assert tail.poll("r1") == "session_stopped"

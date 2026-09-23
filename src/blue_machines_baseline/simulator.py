@@ -483,11 +483,14 @@ async def drive_one(
             await asyncio.sleep(0.2)
             if tail.poll(run_id):
                 break
-            # Silence only counts as "finished" once the agent has actually
-            # spoken about this turn; otherwise the quiet left by its greeting
-            # would end the run before the answer arrives.
+            # Silence only counts as "finished" once the agent has started its
+            # answer. Any agent audio is not enough: a cached acknowledgement is
+            # agent audio too, so a cue that plays just before the user stops used
+            # to look like a reply that had already gone quiet, and the run ended
+            # while the model was still generating the actual answer.
             if (
-                state["last_agent_audio"] > playback_finished_at
+                tail.response_seen
+                and state["last_agent_audio"] > playback_finished_at
                 and time.monotonic() - state["last_agent_audio"] > RESPONSE_QUIET_SECONDS
             ):
                 break
@@ -659,8 +662,11 @@ def main(argv: list[str] | None = None) -> None:
             max_silent_runs=args.max_silent_runs,
         )
     )
-    answered = sum(1 for outcome in outcomes if outcome.agent_spoke)
-    print(f"{answered}/{len(outcomes)} runs produced agent audio")
+    # Cue audio is agent audio, so "produced audio" and "answered" are different
+    # questions; a sweep is only healthy if the second one is true.
+    spoke = sum(1 for outcome in outcomes if outcome.agent_spoke)
+    answered = sum(1 for outcome in outcomes if outcome.agent_answered)
+    print(f"{spoke}/{len(outcomes)} runs produced agent audio, {answered}/{len(outcomes)} answered")
 
 
 if __name__ == "__main__":
