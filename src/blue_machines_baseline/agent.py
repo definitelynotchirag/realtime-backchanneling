@@ -175,6 +175,87 @@ def create_llm(settings: Settings) -> google.LLM | openai.LLM | groq.LLM:
     )
 
 
+def create_scenario_tts(
+    settings: Settings,
+) -> (
+    inference.TTS
+    | elevenlabs.TTS
+    | gemini_tts.TTS
+    | groq.TTS
+    | openrouter_tts.TTS
+    | deepgram_tts.TTS
+):
+    """The configured speech provider, speaking as the user for scripted runs.
+
+    The driver synthesizes the user's side of a scenario with it. Same provider and
+    credentials as :func:`create_tts`; only the voice can differ, so the two
+    speakers in one room are distinguishable and the user's side is audible in the
+    stack actually under test rather than in whatever voice a committed clip was
+    rendered with months ago.
+
+    Unset overrides mean "use the agent's voice". For Deepgram the voice *is* the
+    model (``aura-2-thalia-en``), so ``scenario_tts_model`` is the lever there;
+    providers that separate the two use ``scenario_tts_voice``.
+    """
+
+    voice = settings.scenario_tts_voice
+    model = settings.scenario_tts_model
+
+    if settings.tts_provider == "livekit_inference":
+        return inference.TTS(
+            model=settings.livekit_tts_model,
+            voice=voice or settings.livekit_tts_voice,
+            language="en",
+            api_key=settings.livekit_api_key.get_secret_value(),
+            api_secret=settings.livekit_api_secret.get_secret_value(),
+        )
+
+    if settings.tts_provider == "groq_tts":
+        if settings.groq_api_key is None:
+            raise ConfigurationError("GROQ_API_KEY is required when TTS_PROVIDER=groq_tts")
+        return groq.TTS(
+            model=settings.groq_tts_model,
+            voice=voice or settings.groq_tts_voice,
+            api_key=settings.groq_api_key.get_secret_value(),
+        )
+
+    if settings.tts_provider == "deepgram_tts":
+        if settings.deepgram_api_key is None:
+            raise ConfigurationError("DEEPGRAM_API_KEY is required when TTS_PROVIDER=deepgram_tts")
+        return deepgram_tts.TTS(
+            model=model or settings.deepgram_tts_model,
+            api_key=settings.deepgram_api_key.get_secret_value(),
+        )
+
+    if settings.tts_provider == "openrouter_tts":
+        if settings.openrouter_api_key is None:
+            raise ConfigurationError(
+                "OPENROUTER_API_KEY is required when TTS_PROVIDER=openrouter_tts"
+            )
+        return openrouter_tts.TTS(
+            model=settings.openrouter_tts_model,
+            voice=voice or settings.openrouter_tts_voice,
+            api_key=settings.openrouter_api_key.get_secret_value(),
+        )
+
+    if settings.tts_provider == "gemini_tts":
+        if settings.gemini_api_key is None:
+            raise ConfigurationError("GEMINI_API_KEY is required when TTS_PROVIDER=gemini_tts")
+        return gemini_tts.TTS(
+            model=settings.gemini_tts_model,
+            voice=voice or settings.gemini_tts_voice,
+            api_key=settings.gemini_api_key.get_secret_value(),
+        )
+
+    if settings.elevenlabs_api_key is None:
+        raise ConfigurationError("ELEVENLABS_API_KEY is required when TTS_PROVIDER=elevenlabs")
+    return elevenlabs.TTS(
+        voice_id=settings.elevenlabs_voice_id,
+        model=settings.elevenlabs_tts_model,
+        api_key=settings.elevenlabs_api_key.get_secret_value(),
+    )
+
+
 def create_tts(
     settings: Settings,
 ) -> (

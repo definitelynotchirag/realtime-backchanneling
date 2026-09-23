@@ -102,6 +102,12 @@ class Settings(BaseModel):
     elevenlabs_tts_model: str = "eleven_turbo_v2_5"
     elevenlabs_voice_id: str = "ODq5zmih8GrVes37Dizd"
     scenario_audio_dir: Path = Path("assets/scenarios")
+    scenario_tts_model: str | None = None
+    """Voice/model for the *user's* side in scripted runs. For Deepgram the model
+    carries the voice (`aura-2-*`); unset means "same as the agent's"."""
+
+    scenario_tts_voice: str | None = None
+    """Voice for the user's side where the provider separates voice from model."""
     # Speech is billed per audio token by some providers (Groq's Orpheus allows
     # 3600 per day), so the default answer length is deliberately tiny.
     agent_instructions: str = (
@@ -306,6 +312,10 @@ class Settings(BaseModel):
                 else None
             ),
             deepgram_tts_model=source.get("DEEPGRAM_TTS_MODEL", "aura-2-thalia-en").strip(),
+            # Blank means unset, not "an empty voice": the driver then uses the
+            # agent's own voice for the user's side.
+            scenario_tts_model=source.get("SCENARIO_TTS_MODEL", "").strip() or None,
+            scenario_tts_voice=source.get("SCENARIO_TTS_VOICE", "").strip() or None,
             elevenlabs_api_key=(
                 SecretStr(source["ELEVENLABS_API_KEY"].strip())
                 if source.get("ELEVENLABS_API_KEY", "").strip()

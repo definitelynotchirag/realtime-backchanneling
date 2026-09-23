@@ -30,9 +30,14 @@ offline policy replay, the comparison table, and the visual run timeline.
   one policy.
 - A deterministic replay runner for validating the inspection system before provider
   credentials are available. Replay numbers are labelled and are not provider data.
-- A scripted scenario driver (`blue-machines-scenario`) that renders each scenario's
-  utterance once, then drives every (scenario, mode, repeat) through real LiveKit rooms
-  with real audio - no human at the microphone, and no dependence on speaking twice.
+- A scripted scenario driver (`blue-machines-scenario`) that drives every
+  (scenario, mode, repeat) through real LiveKit rooms with real audio - no human at the
+  microphone, and no dependence on speaking twice. The user's line is either the committed
+  clip for the scenario or, with `--live-audio`, synthesized per run by the *configured*
+  speech provider and streamed into the room as it is produced (`SCENARIO_TTS_MODEL` /
+  `SCENARIO_TTS_VOICE` give that voice its own identity, so the two speakers in a room are
+  distinguishable). A missing clip falls back to live synthesis rather than failing.
+  `--generate-audio` renders the clips with the same configured provider.
 - Provider options for environments where LiveKit Inference is unavailable or rate
   limited: Deepgram live STT and Aura-2 speech (`STT_PROVIDER=deepgram`,
   `TTS_PROVIDER=deepgram_tts`), the OpenRouter-hosted Deepgram voice
@@ -376,6 +381,17 @@ cue the moment the user yields.
 - A positive response delta means the backchannel configuration started the real
   answer later. A negative delta is not automatically an improvement; inspect EOT
   risk, cancellations, and the timeline before drawing a conclusion.
+
+### Whose voice the user speaks with
+
+The committed evidence was recorded with the clips: every run heard byte-identical audio,
+which is what keeps the three arms comparable. `--live-audio` trades a little of that for
+audibility in the stack actually under test - the user's side then comes from the configured
+provider instead of a Gemini render from months ago. It does not move the measured latency
+either way: the number is anchored at the end of the user's line (`user_speech_ended`), so
+how that line was produced is upstream of the measurement. What it costs is one synthesis per
+run (about a second of time-to-first-audio, then real-time playback) and a slightly different
+waveform per repeat.
 
 ### From rooms to the report
 

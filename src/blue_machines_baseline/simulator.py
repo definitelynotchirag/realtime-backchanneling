@@ -32,17 +32,19 @@ import sys
 import time
 import uuid
 import wave
+from collections.abc import AsyncIterator
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any, Protocol
 
 from dotenv import load_dotenv
 from livekit import api as livekit_api
 from livekit import rtc
 
+from .agent import create_scenario_tts
 from .benchmark import SCENARIO_BY_ID, SCENARIOS, BenchmarkScenario
 from .config import ConfigurationError, Settings
 from .eot_detector import frame_rms
-from .gemini_tts import TTS as GeminiTTS
 
 logger = logging.getLogger("blue-machines-scenario")
 
@@ -255,19 +257,158 @@ def with_pauses(frames: list[rtc.AudioFrame], pauses: tuple[float, ...]) -> list
     return result
 
 
-async def generate_audio(settings: Settings, scenario_ids: list[str]) -> list[ScenarioClip]:
-    """Render one clip per scenario with the Gemini TTS provider."""
+def split_for_pauses(text: str, pause_count: int) -> list[str]:
+    """Split an utterance into the segments a scenario's pauses separate.
 
-    api_key = (
-        settings.gemini_api_key.get_secret_value() if settings.gemini_api_key is not None else ""
-    )
-    if not api_key:
-        raise ConfigurationError("GEMINI_API_KEY is required to generate scenario audio")
+    A pause in the middle of a sentence is what makes the policy's pause and
+    end-of-turn behaviour observable. Splitting the *text* rather than the rendered
+    frames puts each pause at a word boundary, and - unlike counting frames - it
+    works while the audio is still being produced, which is what lets the driver
+    synthesize the user's side live. If the utterance has fewer words than segments,
+    the extra pauses are dropped rather than spoken as empty audio.
+    """
+
+    words = text.split()
+    if pause_count <= 0 or len(words) <= 1:
+        return [text]
+    segments = min(pause_count + 1, len(words))
+    size = len(words) // segments
+    remainder = len(words) % segments
+    result: list[str] = []
+    index = 0
+    for position in range(segments):
+        take = size + (1 if position < remainder else 0)
+        result.append(" ".join(words[index : index + take]))
+        index += take
+    return result
+
+
+class PublishRateFrames:
+    """Convert provider audio into the fixed frames the room publishes.
+
+    Providers choose their own sample rate - Deepgram speaks at 24 kHz while the
+    AudioSource is created at 16 kHz - so live audio has to be converted as it
+    arrives. ``audioop.ratecv`` keeps its resampler state between calls and the
+    leftover samples are carried into the next frame, so nothing is dropped and the
+    user does not wait for the whole utterance to be converted before being heard.
+    """
+
+    def __init__(self, *, sample_width: int = 2) -> None:
+        self._sample_width = sample_width
+        self._state: object | None = None
+        self._carry = b""
+
+    @property
+    def frame_bytes(self) -> int:
+        return (PUBLISH_RATE * FRAME_MS // 1000) * self._sample_width
+
+    def push(self, frame: rtc.AudioFrame) -> list[rtc.AudioFrame]:
+        data = bytes(frame.data)
+        if frame.num_channels > 1:
+            data = audioop.tomono(data, self._sample_width, 0.5, 0.5)
+        if frame.sample_rate != PUBLISH_RATE:
+            data, self._state = audioop.ratecv(
+                data,
+                self._sample_width,
+                1,
+                frame.sample_rate,
+                PUBLISH_RATE,
+                self._state,
+            )
+        pcm = self._carry + data
+        step = self.frame_bytes
+        frames = [
+            self._frame(pcm[offset : offset + step])
+            for offset in range(0, len(pcm) - step + 1, step)
+        ]
+        self._carry = pcm[len(frames) * step :]
+        return frames
+
+    def flush(self) -> list[rtc.AudioFrame]:
+        """Emit the tail, padded with silence, so the last word is not clipped."""
+
+        if not self._carry:
+            return []
+        padded = self._carry + b"\x00" * (self.frame_bytes - len(self._carry))
+        self._carry = b""
+        return [self._frame(padded)]
+
+    def _frame(self, chunk: bytes) -> rtc.AudioFrame:
+        return rtc.AudioFrame(
+            data=chunk,
+            sample_rate=PUBLISH_RATE,
+            num_channels=1,
+            samples_per_channel=len(chunk) // self._sample_width,
+        )
+
+
+class SpeechProvider(Protocol):
+    """What the driver needs from a text-to-speech provider.
+
+    Structural rather than nominal so a test can hand it a fake, and so any
+    LiveKit TTS adapter satisfies it without the driver importing them all.
+    """
+
+    def synthesize(self, text: str) -> AsyncIterator[Any]: ...
+
+
+class FrameSink(Protocol):
+    """The part of ``rtc.AudioSource`` the live path uses."""
+
+    async def capture_frame(self, frame: rtc.AudioFrame) -> None: ...
+
+
+async def play_live_utterance(
+    source: FrameSink,
+    tts_provider: SpeechProvider,
+    scenario: BenchmarkScenario,
+    *,
+    frame_ms: int = FRAME_MS,
+) -> float:
+    """Speak the scenario's utterance as the user, synthesizing it as it goes.
+
+    The audio is captured into the room frame by frame as the provider produces it,
+    so the user starts speaking a provider time-to-first-audio after the run starts
+    rather than after the whole utterance is synthesized. Returns the seconds of
+    audio captured, pauses included.
+    """
+
+    segments = split_for_pauses(utterance_for(scenario), len(scenario.pause_durations_seconds))
+    pauses = scenario.pause_durations_seconds
+    converter = PublishRateFrames()
+    captured = 0.0
+
+    async def capture(frames: list[rtc.AudioFrame]) -> None:
+        nonlocal captured
+        for frame in frames:
+            await source.capture_frame(frame)
+            captured += frame.samples_per_channel / max(1, frame.sample_rate)
+            await asyncio.sleep(frame_ms / 1000)
+
+    for position, segment in enumerate(segments):
+        produced = 0
+        async for event in tts_provider.synthesize(segment):
+            frame = getattr(event, "frame", None)
+            if frame is None:
+                continue
+            produced += 1
+            await capture(converter.push(frame))
+        await capture(converter.flush())
+        if produced == 0:
+            raise RuntimeError(
+                f"{scenario.scenario_id}: the speech provider returned no audio for {segment!r}"
+            )
+        if position < len(segments) - 1 and position < len(pauses):
+            await capture(silence_frames(pauses[position]))
+    return round(captured, 3)
+
+
+async def generate_audio(settings: Settings, scenario_ids: list[str]) -> list[ScenarioClip]:
+    """Render one clip per scenario with the configured speech provider."""
+
     directory = settings.scenario_audio_dir
     directory.mkdir(parents=True, exist_ok=True)
-    tts = GeminiTTS(
-        api_key=api_key, model=settings.gemini_tts_model, voice=settings.gemini_tts_voice
-    )
+    tts = create_scenario_tts(settings)
 
     clips: list[ScenarioClip] = []
     for scenario_id in scenario_ids:
@@ -284,8 +425,11 @@ async def generate_audio(settings: Settings, scenario_ids: list[str]) -> list[Sc
         sidecar = {
             "scenario_id": scenario_id,
             "text": text,
-            "voice": settings.gemini_tts_voice,
-            "model": settings.gemini_tts_model,
+            "provider": settings.tts_provider,
+            "voice": (
+                settings.scenario_tts_voice or settings.scenario_tts_model or "provider default"
+            ),
+            "model": getattr(tts, "model", settings.scenario_tts_model or ""),
             "duration_seconds": duration,
             "target_duration_seconds": scenario.speech_duration_seconds,
             "pause_durations_seconds": list(scenario.pause_durations_seconds),
@@ -384,15 +528,25 @@ async def drive_one(
     repeat: int,
     max_wait: float,
     greet: bool = False,
+    live_tts: SpeechProvider | None = None,
 ) -> RunOutcome:
-    """Run one scripted scenario through a real room."""
+    """Run one scripted scenario through a real room.
+
+    With ``live_tts`` the user's line is synthesized as the run starts and streamed
+    into the room; otherwise the committed clip for the scenario is replayed. Either
+    way the agent hears the same words through the same microphone track, and the
+    timing that matters is measured from when the user's audio stops.
+    """
 
     run_id = f"{scenario_id}-{mode}-{repeat:02d}-{uuid.uuid4().hex[:6]}"
     room_name, token = build_token(
         settings, scenario_id=scenario_id, mode=mode, run_id=run_id, greet=greet
     )
-    clip = load_clip(scenario_id, settings.scenario_audio_dir)
-    frames = with_pauses(read_clip(clip.path), clip.pause_durations_seconds)
+    scenario = SCENARIO_BY_ID[scenario_id]
+    frames: list[rtc.AudioFrame] = []
+    if live_tts is None:
+        clip = load_clip(scenario_id, settings.scenario_audio_dir)
+        frames = with_pauses(read_clip(clip.path), clip.pause_durations_seconds)
 
     room = rtc.Room()
     state = {"agent_joined": False, "last_agent_audio": 0.0, "agent_spoke": False}
@@ -472,10 +626,20 @@ async def drive_one(
         # poll, and a tail opened afterwards would miss that event entirely and
         # report a successful run as unanswered.
         tail = EventLogTail(settings.event_log_path)
-        logger.info("playing %s into %s (%.2fs)", clip.path.name, room_name, clip.duration_seconds)
-        for frame in frames:
-            await source.capture_frame(frame)
-            await asyncio.sleep(FRAME_MS / 1000)
+        if live_tts is not None:
+            logger.info("synthesizing %s live into %s", scenario_id, room_name)
+            spoken = await play_live_utterance(source, live_tts, scenario)
+            logger.info("%s: synthesized %.2fs of user audio", scenario_id, spoken)
+        else:
+            logger.info(
+                "playing the %s clip into %s (%.2fs)",
+                scenario_id,
+                room_name,
+                len(frames) * FRAME_MS / 1000,
+            )
+            for frame in frames:
+                await source.capture_frame(frame)
+                await asyncio.sleep(FRAME_MS / 1000)
         playback_finished_at = time.monotonic()
 
         deadline = playback_finished_at + max_wait
@@ -543,10 +707,26 @@ async def run_benchmark(
     max_wait: float,
     greet: bool = False,
     max_silent_runs: int = 3,
+    live_audio: bool = False,
 ) -> list[RunOutcome]:
     outcomes: list[RunOutcome] = []
     silent_streak = 0
+    provider: SpeechProvider | None = None
+
+    def speech_provider() -> SpeechProvider:
+        """Built on first use: a sweep that replays clips never needs one."""
+
+        nonlocal provider
+        if provider is None:
+            provider = create_scenario_tts(settings)
+        return provider
+
     for scenario_id in scenario_ids:
+        has_clip = clip_paths(settings.scenario_audio_dir, scenario_id)[0].exists()
+        synthesize_live = live_audio or not has_clip
+        if synthesize_live and not has_clip and not live_audio:
+            logger.info("no clip for %s; synthesizing the user's line live", scenario_id)
+        live_tts = speech_provider() if synthesize_live else None
         for mode in modes:
             for repeat in range(1, repeats + 1):
                 outcome = await drive_one(
@@ -556,6 +736,7 @@ async def run_benchmark(
                     repeat=repeat,
                     max_wait=max_wait,
                     greet=greet,
+                    live_tts=live_tts,
                 )
                 outcomes.append(outcome)
                 print(
@@ -602,6 +783,14 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--repeats", type=int, default=1, help="runs per (scenario, mode)")
     parser.add_argument(
         "--max-wait", type=float, default=90.0, help="seconds to wait for the agent's answer"
+    )
+    parser.add_argument(
+        "--live-audio",
+        action="store_true",
+        help=(
+            "synthesize the user's line per run with the configured speech provider "
+            "instead of replaying the committed clip"
+        ),
     )
     parser.add_argument(
         "--greet",
@@ -651,6 +840,17 @@ def main(argv: list[str] | None = None) -> None:
         f"driving {len(scenario_ids)} scenario(s) x {len(modes)} mode(s) x {args.repeats} repeat(s)"
     )
     print("the worker must be running: uv run blue-machines-agent dev")
+    scenario_voice = settings.scenario_tts_model or settings.scenario_tts_voice or "agent voice"
+    if args.live_audio:
+        print(
+            f"user audio: live, synthesized per run with {settings.tts_provider} "
+            f"({scenario_voice}); clips in {settings.scenario_audio_dir} are ignored"
+        )
+    else:
+        print(
+            f"user audio: clips from {settings.scenario_audio_dir} "
+            "(pass --live-audio to synthesize them with the configured provider)"
+        )
     outcomes = asyncio.run(
         run_benchmark(
             settings,
@@ -660,6 +860,7 @@ def main(argv: list[str] | None = None) -> None:
             max_wait=args.max_wait,
             greet=args.greet,
             max_silent_runs=args.max_silent_runs,
+            live_audio=args.live_audio,
         )
     )
     # Cue audio is agent audio, so "produced audio" and "answered" are different
