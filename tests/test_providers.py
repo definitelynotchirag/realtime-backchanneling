@@ -3,7 +3,7 @@ import pickle
 from livekit.agents import inference
 from livekit.plugins import elevenlabs, google, groq
 
-from blue_machines_baseline import gemini_tts, groq_interim_stt, openrouter_tts
+from blue_machines_baseline import deepgram_tts, gemini_tts, groq_interim_stt, openrouter_tts
 from blue_machines_baseline.agent import create_llm, create_stt, create_tts, entrypoint
 from blue_machines_baseline.config import Settings
 
@@ -16,6 +16,7 @@ def settings_for_provider_tests(**overrides: str) -> Settings:
         "GROQ_API_KEY": "groq_api_key",
         "GEMINI_API_KEY": "gemini_api_key",
         "OPENROUTER_API_KEY": "openrouter_api_key",
+        "DEEPGRAM_API_KEY": "deepgram_api_key",
         **overrides,
     }
     return Settings.from_env(values)
@@ -112,6 +113,18 @@ def test_openrouter_tts_uses_the_free_deepgram_voice() -> None:
     assert isinstance(tts, openrouter_tts.TTS)
     assert tts.model == "deepgram/flux-tts:free"
     assert tts.provider == "openrouter"
+
+
+def test_deepgram_tts_is_selected_for_streaming_speech() -> None:
+    settings = settings_for_provider_tests(
+        TTS_PROVIDER="deepgram_tts", DEEPGRAM_API_KEY="deepgram_api_key"
+    )
+
+    tts = create_tts(settings)
+
+    assert isinstance(tts, deepgram_tts.TTS)
+    assert tts.model == "aura-2-thalia-en"
+    assert tts.provider == "deepgram"
 
 
 def test_groq_tts_uses_the_bundled_plugin() -> None:

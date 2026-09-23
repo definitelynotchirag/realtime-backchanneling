@@ -17,7 +17,7 @@ from livekit.agents import Agent, AgentServer, AgentSession, JobContext, cli, in
 from livekit.plugins import elevenlabs, google, groq, openai, silero
 from typesafe_sdk import AsyncTypeSafeClient
 
-from . import gemini_tts, groq_interim_stt, openrouter_tts
+from . import deepgram_tts, gemini_tts, groq_interim_stt, openrouter_tts
 from .backchannel import BackchannelEngine
 from .benchmark import parse_run_context
 from .config import JEV_INTERIM_STT_ERROR, ConfigurationError, Settings
@@ -165,7 +165,14 @@ def create_llm(settings: Settings) -> google.LLM | openai.LLM | groq.LLM:
 
 def create_tts(
     settings: Settings,
-) -> inference.TTS | elevenlabs.TTS | gemini_tts.TTS | groq.TTS | openrouter_tts.TTS:
+) -> (
+    inference.TTS
+    | elevenlabs.TTS
+    | gemini_tts.TTS
+    | groq.TTS
+    | openrouter_tts.TTS
+    | deepgram_tts.TTS
+):
     """Create LiveKit Inference TTS by default, with explicit direct providers."""
 
     if settings.tts_provider == "livekit_inference":
@@ -186,6 +193,14 @@ def create_tts(
             model=settings.groq_tts_model,
             voice=settings.groq_tts_voice,
             api_key=settings.groq_api_key.get_secret_value(),
+        )
+
+    if settings.tts_provider == "deepgram_tts":
+        if settings.deepgram_api_key is None:
+            raise ConfigurationError("DEEPGRAM_API_KEY is required when TTS_PROVIDER=deepgram_tts")
+        return deepgram_tts.TTS(
+            model=settings.deepgram_tts_model,
+            api_key=settings.deepgram_api_key.get_secret_value(),
         )
 
     if settings.tts_provider == "openrouter_tts":

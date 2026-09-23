@@ -14,56 +14,33 @@ silently produce audio at the wrong rate.
 
 from __future__ import annotations
 
-import asyncio
 import json
 import logging
 import urllib.error
 import urllib.request
-import uuid
 from typing import Any
 
 from livekit.agents import tts
 from livekit.agents.types import DEFAULT_API_CONNECT_OPTIONS, APIConnectOptions
 
+from . import tts_http
+
 logger = logging.getLogger("blue-machines-openrouter-tts")
+
+parse_audio_format = tts_http.parse_audio_format
+"""Kept importable here because the adapter's format handling is part of its surface."""
 
 DEFAULT_BASE_URL = "https://openrouter.ai/api/v1"
 DEFAULT_MODEL = "deepgram/flux-tts:free"
 DEFAULT_VOICE = "flux-alexis-en"
-DEFAULT_SAMPLE_RATE = 24000
-DEFAULT_CHANNELS = 1
+DEFAULT_SAMPLE_RATE = tts_http.DEFAULT_SAMPLE_RATE
+DEFAULT_CHANNELS = tts_http.DEFAULT_CHANNELS
 REQUEST_TIMEOUT_SECONDS: float = 45.0
-CHUNK_BYTES: int = 9600
-"""Read size: 200 ms of 24 kHz mono 16-bit audio per read."""
 USER_AGENT = "blue-machines-baseline/0.1 (LiveKit backchannel benchmark)"
 
 
 class OpenRouterTTSError(RuntimeError):
     """Raised when OpenRouter cannot synthesize the utterance."""
-
-
-def parse_audio_format(content_type: str | None) -> tuple[int, int]:
-    """Read the sample rate and channel count out of a Content-Type header.
-
-    ``audio/pcm;rate=24000;channels=1`` becomes ``(24000, 1)``. Missing or
-    unparsable parameters fall back to the provider's documented defaults.
-    """
-
-    if not content_type:
-        return DEFAULT_SAMPLE_RATE, DEFAULT_CHANNELS
-    parameters: dict[str, str] = {}
-    for part in content_type.split(";")[1:]:
-        key, _, value = part.partition("=")
-        parameters[key.strip().lower()] = value.strip()
-    try:
-        rate = int(parameters["rate"])
-    except (KeyError, ValueError):
-        rate = DEFAULT_SAMPLE_RATE
-    try:
-        channels = int(parameters["channels"])
-    except (KeyError, ValueError):
-        channels = DEFAULT_CHANNELS
-    return rate, channels
 
 
 def _request_body(*, model: str, voice: str, text: str) -> bytes:
@@ -119,14 +96,6 @@ def _synthesize_blocking(
         raise OpenRouterTTSError("OpenRouter returned no audio")
     rate, channels = parse_audio_format(content_type)
     return audio, rate, channels
-
-
-class _StreamFormat:
-    """Marker carrying the audio format read from the response headers."""
-
-    def __init__(self, sample_rate: int, channels: int) -> None:
-        self.sample_rate = sample_rate
-        self.channels = channels
 
 
 class TTS(tts.TTS):
@@ -185,68 +154,16 @@ class _ChunkedStream(tts.ChunkedStream):
         self._tts: TTS = tts
 
     async def _run(self, output_emitter: tts.AudioEmitter) -> None:
-        loop = asyncio.get_running_loop()
-        items: asyncio.Queue[object] = asyncio.Queue()
-        done = object()
-
-        def produce() -> None:
-            """Read the response in chunks, handing each one to the event loop."""
-
-            try:
-                response = _open_speech(
-                    api_key=self._tts._api_key,
-                    base_url=self._tts._base_url,
-                    body=_request_body(
-                        model=self._tts._model_name, voice=self._tts.voice, text=self.input_text
-                    ),
-                    timeout=self._tts._http_timeout,
-                )
-                try:
-                    rate, channels = parse_audio_format(response.headers.get("Content-Type"))
-                    loop.call_soon_threadsafe(items.put_nowait, _StreamFormat(rate, channels))
-                    while True:
-                        chunk = response.read(CHUNK_BYTES)
-                        if not chunk:
-                            break
-                        loop.call_soon_threadsafe(items.put_nowait, chunk)
-                finally:
-                    response.close()
-            except Exception as exc:  # noqa: BLE001 - forwarded to the awaiting task
-                loop.call_soon_threadsafe(items.put_nowait, exc)
-            finally:
-                loop.call_soon_threadsafe(items.put_nowait, done)
-
-        producer = asyncio.create_task(asyncio.to_thread(produce))
-        initialised = False
-        pushed = False
-        try:
-            while True:
-                item = await items.get()
-                if item is done:
-                    break
-                if isinstance(item, BaseException):
-                    if pushed:
-                        # Audio is already playing; a truncated answer is better
-                        # than replaying the utterance from the start.
-                        logger.warning("speech stream ended early: %s", item)
-                        break
-                    raise item
-                if isinstance(item, _StreamFormat):
-                    output_emitter.initialize(
-                        request_id=f"openrouter-tts-{uuid.uuid4().hex[:8]}",
-                        sample_rate=item.sample_rate,
-                        num_channels=item.channels,
-                        mime_type="audio/pcm",
-                    )
-                    initialised = True
-                    continue
-                if isinstance(item, bytes):
-                    if not initialised:
-                        raise OpenRouterTTSError("audio arrived before the format header")
-                    output_emitter.push(item)
-                    pushed = True
-        finally:
-            await producer
-        if not initialised:
-            raise OpenRouterTTSError("OpenRouter returned no audio")
-        output_emitter.flush()
+        await tts_http.stream_pcm_response(
+            lambda: _open_speech(
+                api_key=self._tts._api_key,
+                base_url=self._tts._base_url,
+                body=_request_body(
+                    model=self._tts._model_name, voice=self._tts.voice, text=self.input_text
+                ),
+                timeout=self._tts._http_timeout,
+            ),
+            output_emitter,
+            request_id_prefix="openrouter-tts",
+            provider="OpenRouter",
+        )

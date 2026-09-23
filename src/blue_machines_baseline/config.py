@@ -16,7 +16,9 @@ class ConfigurationError(ValueError):
     """Raised when the agent cannot start with the supplied environment."""
 
 
-TTSProvider = Literal["livekit_inference", "elevenlabs", "gemini_tts", "groq_tts", "openrouter_tts"]
+TTSProvider = Literal[
+    "livekit_inference", "elevenlabs", "gemini_tts", "groq_tts", "openrouter_tts", "deepgram_tts"
+]
 LLMProvider = Literal["gemini", "openrouter", "groq"]
 STTProvider = Literal["livekit_inference", "groq", "groq_interim"]
 EotDetector = Literal["livekit_inference", "final_transcript"]
@@ -88,6 +90,8 @@ class Settings(BaseModel):
     groq_tts_voice: str = "autumn"
     openrouter_tts_model: str = "deepgram/flux-tts:free"
     openrouter_tts_voice: str = "flux-alexis-en"
+    deepgram_api_key: SecretStr | None = None
+    deepgram_tts_model: str = "aura-2-thalia-en"
     elevenlabs_api_key: SecretStr | None = None
     elevenlabs_tts_model: str = "eleven_turbo_v2_5"
     elevenlabs_voice_id: str = "ODq5zmih8GrVes37Dizd"
@@ -134,6 +138,8 @@ class Settings(BaseModel):
             required["GROQ_API_KEY (when TTS_PROVIDER=groq_tts)"] = ""
         if tts_provider == "openrouter_tts" and not source.get("OPENROUTER_API_KEY", "").strip():
             required["OPENROUTER_API_KEY (when TTS_PROVIDER=openrouter_tts)"] = ""
+        if tts_provider == "deepgram_tts" and not source.get("DEEPGRAM_API_KEY", "").strip():
+            required["DEEPGRAM_API_KEY (when TTS_PROVIDER=deepgram_tts)"] = ""
         missing = [name for name, value in required.items() if not value]
         if missing:
             names = ", ".join(missing)
@@ -145,10 +151,11 @@ class Settings(BaseModel):
             "gemini_tts",
             "groq_tts",
             "openrouter_tts",
+            "deepgram_tts",
         }:
             raise ConfigurationError(
                 "TTS_PROVIDER must be one of: livekit_inference, elevenlabs, gemini_tts, "
-                "groq_tts, openrouter_tts"
+                "groq_tts, openrouter_tts, deepgram_tts"
             )
 
         livekit_url = required["LIVEKIT_URL"]
@@ -273,6 +280,12 @@ class Settings(BaseModel):
                 "OPENROUTER_TTS_MODEL", "deepgram/flux-tts:free"
             ).strip(),
             openrouter_tts_voice=source.get("OPENROUTER_TTS_VOICE", "flux-alexis-en").strip(),
+            deepgram_api_key=(
+                SecretStr(source["DEEPGRAM_API_KEY"].strip())
+                if source.get("DEEPGRAM_API_KEY", "").strip()
+                else None
+            ),
+            deepgram_tts_model=source.get("DEEPGRAM_TTS_MODEL", "aura-2-thalia-en").strip(),
             elevenlabs_api_key=(
                 SecretStr(source["ELEVENLABS_API_KEY"].strip())
                 if source.get("ELEVENLABS_API_KEY", "").strip()
