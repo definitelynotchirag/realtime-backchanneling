@@ -1,4 +1,8 @@
+import asyncio
+import json
+
 import pytest
+from livekit import rtc
 from livekit.agents import stt
 
 from blue_machines_baseline import deepgram_stt
@@ -79,3 +83,65 @@ def test_the_query_carries_the_settings_that_matter() -> None:
 def test_an_api_key_is_required() -> None:
     with pytest.raises(ValueError):
         deepgram_stt.STT(api_key="")
+
+
+def _events(stream) -> list:
+    """Drain what the stream has emitted so far."""
+
+    drained = []
+    while not stream._event_ch.empty():
+        drained.append(stream._event_ch.recv_nowait())
+    return drained
+
+
+def _usage(stream) -> list[float]:
+    return [
+        event.recognition_usage.audio_duration
+        for event in _events(stream)
+        if event.type == stt.SpeechEventType.RECOGNITION_USAGE
+    ]
+
+
+def _push(stream, frames: int) -> None:
+    for _ in range(frames):
+        stream.push_frame(
+            rtc.AudioFrame(
+                data=b"\x00" * 640, sample_rate=16000, num_channels=1, samples_per_channel=320
+            )
+        )
+
+
+def test_stream_reports_the_audio_each_final_transcript_covered() -> None:
+    """The pipeline has no speech-to-text usage for this provider without this.
+
+    Deepgram's live API does not return usage, so the adapter counts the audio it
+    pushed and reports it per final transcript, which the SDK turns into STTMetrics.
+    """
+
+    async def scenario() -> None:
+        stream = deepgram_stt.STT(api_key="key").stream()
+        _push(stream, 25)  # half a second of 20 ms frames
+        stream._handle_text(
+            json.dumps(message(transcript="nine words of speech here", is_final=True))
+        )
+
+        assert _usage(stream) == [pytest.approx(0.5, abs=0.01)]
+
+        # A second transcript reports only the audio since the last one.
+        _push(stream, 1)
+        stream._handle_text(json.dumps(message(transcript="and another final line", is_final=True)))
+
+        assert _usage(stream) == [pytest.approx(0.02, abs=0.005)]
+
+    asyncio.run(scenario())
+
+
+def test_interims_do_not_report_usage() -> None:
+    async def scenario() -> None:
+        stream = deepgram_stt.STT(api_key="key").stream()
+        _push(stream, 1)
+        stream._handle_text(json.dumps(message(transcript="still talking", is_final=False)))
+
+        assert _usage(stream) == []
+
+    asyncio.run(scenario())

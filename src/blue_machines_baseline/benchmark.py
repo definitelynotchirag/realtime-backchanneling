@@ -180,7 +180,12 @@ class RunSummary:
     tts_ttfb_p50_ms: float | None = None
     tts_ttfb_p95_ms: float | None = None
     stt_duration_ms: tuple[float, ...] = ()
+    """Wall time of a batch transcription call. Empty for a streaming provider, which
+    reports the audio it transcribed instead of a call duration."""
+
     stt_duration_p50_ms: float | None = None
+    stt_audio_duration_ms: tuple[float, ...] = ()
+    stt_audio_duration_p50_ms: float | None = None
     eot_delays_ms: tuple[float, ...] = ()
     eot_delay_p50_ms: float | None = None
     interim_transcripts: int = 0
@@ -199,6 +204,7 @@ class RunSummary:
             "llm_ttft_ms",
             "tts_ttfb_ms",
             "stt_duration_ms",
+            "stt_audio_duration_ms",
             "eot_delays_ms",
             "jev_decision_latencies_ms",
         ):
@@ -498,7 +504,8 @@ def summarize_run(
     backchannel_latencies = _backchannel_latencies(ordered)
     llm_ttft = _metric_values(ordered, "llm", "ttft")
     tts_ttfb = _metric_values(ordered, "tts", "ttfb")
-    stt_duration = _metric_values(ordered, "stt", "duration")
+    stt_duration = [value for value in _metric_values(ordered, "stt", "duration") if value > 0]
+    stt_audio_duration = _metric_values(ordered, "stt", "audio_duration")
     eot_delays = _metric_values(ordered, "eou", "end_of_utterance_delay")
     jev_decision_latencies = [
         float(value)
@@ -543,6 +550,8 @@ def summarize_run(
         tts_ttfb_p95_ms=_percentile(tts_ttfb, 0.95),
         stt_duration_ms=tuple(stt_duration),
         stt_duration_p50_ms=_percentile(stt_duration, 0.50),
+        stt_audio_duration_ms=tuple(stt_audio_duration),
+        stt_audio_duration_p50_ms=_percentile(stt_audio_duration, 0.50),
         eot_delays_ms=tuple(eot_delays),
         eot_delay_p50_ms=_percentile(eot_delays, 0.50),
         interim_transcripts=sum(
@@ -572,6 +581,7 @@ def _aggregate_selected(selected: Sequence[RunSummary], *, scenario_id: str) -> 
     llm_ttft = [value for run in selected for value in run.llm_ttft_ms]
     tts_ttfb = [value for run in selected for value in run.tts_ttfb_ms]
     stt_duration = [value for run in selected for value in run.stt_duration_ms]
+    stt_audio_duration = [value for run in selected for value in run.stt_audio_duration_ms]
     eot_delays = [value for run in selected for value in run.eot_delays_ms]
     jev_decision_latencies = [value for run in selected for value in run.jev_decision_latencies_ms]
     return RunSummary(
@@ -608,6 +618,8 @@ def _aggregate_selected(selected: Sequence[RunSummary], *, scenario_id: str) -> 
         tts_ttfb_p95_ms=_percentile(tts_ttfb, 0.95),
         stt_duration_ms=tuple(stt_duration),
         stt_duration_p50_ms=_percentile(stt_duration, 0.50),
+        stt_audio_duration_ms=tuple(stt_audio_duration),
+        stt_audio_duration_p50_ms=_percentile(stt_audio_duration, 0.50),
         eot_delays_ms=tuple(eot_delays),
         eot_delay_p50_ms=_percentile(eot_delays, 0.50),
         interim_transcripts=sum(run.interim_transcripts for run in selected),

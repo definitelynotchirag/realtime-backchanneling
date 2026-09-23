@@ -226,6 +226,11 @@ class _Stream(stt.RecognizeStream):
         self._stt = stt
         self._opts = opts
         self._started_speaking = False
+        # Usage is reported per final transcript as the audio it covered, which is what
+        # the SDK turns into STTMetrics for the session. Without it the pipeline has no
+        # speech-to-text usage at all for this provider.
+        self._audio_seconds = 0.0
+        self._reported_audio_seconds = 0.0
 
     async def _run(self) -> None:
         try:
@@ -253,6 +258,13 @@ class _Stream(stt.RecognizeStream):
                         await sender
         finally:
             await session.close()
+
+    def push_frame(self, frame: rtc.AudioFrame) -> None:
+        # Deepgram's live API returns no usage, so the audio the stream is given is
+        # counted here and reported per final transcript; the SDK turns that into the
+        # session's speech-to-text usage.
+        self._audio_seconds += frame.samples_per_channel / max(1, frame.sample_rate)
+        super().push_frame(frame)
 
     async def _send_audio(self, ws: aiohttp.ClientWebSocketResponse) -> None:
         async for item in self._input_ch:
@@ -286,3 +298,15 @@ class _Stream(stt.RecognizeStream):
             if event.type == stt.SpeechEventType.END_OF_SPEECH:
                 self._started_speaking = False
             self._event_ch.send_nowait(event)
+            if event.type == stt.SpeechEventType.FINAL_TRANSCRIPT:
+                self._event_ch.send_nowait(self._usage_event())
+
+    def _usage_event(self) -> stt.SpeechEvent:
+        """The audio covered by the transcript that has just been reported."""
+
+        covered = self._audio_seconds - self._reported_audio_seconds
+        self._reported_audio_seconds = self._audio_seconds
+        return stt.SpeechEvent(
+            type=stt.SpeechEventType.RECOGNITION_USAGE,
+            recognition_usage=stt.RecognitionUsage(audio_duration=max(0.0, covered)),
+        )
