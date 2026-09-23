@@ -580,6 +580,9 @@ async def entrypoint(ctx: JobContext) -> None:
         llm_provider=settings.llm_provider,
         tts_provider=settings.tts_provider,
         eot_detector=settings.eot_detector,
+        # The spoken style matters as much as the providers: a vague instruction is
+        # how a voice agent ends up reading a seven hundred word essay out loud.
+        agent_instructions=settings.agent_instructions,
     )
     session = AgentSession(
         vad=silero.VAD.load(),

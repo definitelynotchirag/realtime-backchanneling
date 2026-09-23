@@ -372,6 +372,23 @@ cue the moment the user yields.
   answer later. A negative delta is not automatically an improvement; inspect EOT
   risk, cancellations, and the timeline before drawing a conclusion.
 
+### From rooms to the report
+
+```
+blue-machines-scenario --scenarios all --modes baseline,backchannel,jev_backchannel --repeats 3
+        -> outputs/baseline-events.jsonl        every event, gitignored
+scripts/extract-benchmark-runs.py --stack stt=deepgram,tts=deepgram_tts
+        -> outputs/benchmark-events.jsonl       committed evidence
+blue-machines-benchmark --events ... --report ...
+        -> outputs/benchmark-report-provider.json
+```
+
+The extraction keeps only scripted runs that match the stack being reported and that
+actually got an answer (`user_speech_ended` and `agent_response_started`). Every run
+records the providers it used in its `session_started` event, so a table cannot
+quietly mix a batch-STT measurement with a streaming one, and the extraction says out
+loud how many runs it skipped and why.
+
 ## What became slower, and what I would change before production
 
 ### The measured result
