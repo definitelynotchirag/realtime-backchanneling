@@ -504,8 +504,9 @@ cues still audible when the user took the floor). No cue outlived the turn it wa
 over: `cue_delays_attributed` is 0 in every arm, so no answer ever had to wait for a cue to
 finish. That is the interrupt discipline doing its job - the cue is force-stopped the moment
 the user yields - and 126 further cues were suppressed before playback when the turn detector
-judged the turn nearly over (55 timer, 71 Jev; the suppression event is gated on a cue
-actually being scheduled, so the baseline arm reports none). Those counters (`delayed_responses`,
+judged the turn nearly over (55 timer, 71 Jev; those were recorded before the event was gated
+on a scheduled cue, so they may include predictions that arrived with no cue pending - the
+baseline arm reports none because it can never schedule one). Those counters (`delayed_responses`,
 `cue_delays_attributed`, `collision_events`) are the policy-specific regression signals: if a
 future sweep makes the answer slower *because of a cue*, they move first. The aggregate P50
 will not tell you.
