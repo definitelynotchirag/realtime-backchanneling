@@ -166,10 +166,12 @@ const comparisonRows = [
   { label: "AUDIBLE CUES", key: "audible_backchannels", unit: "count" },
   { label: "CUES / LONG TURN", key: "backchannels_per_long_turn", unit: "ratio" },
   { label: "DELAYED RESPONSES", key: "delayed_responses", unit: "count" },
+  { label: "CUE-BLOCKED WAITS", key: "cue_delays_attributed", unit: "count" },
   { label: "COLLISIONS", key: "collision_events", unit: "count" },
   { label: "CANCELLED", key: "cancelled_backchannels", unit: "count" },
   { label: "JEV TIMEOUTS", key: "jev_timeouts", unit: "count" },
   { label: "EOT RISK", key: "end_of_turn_risks", unit: "count" },
+  { label: "EOT SUPPRESSED", key: "eot_suppressed_cues", unit: "count" },
   { label: "OVERLAP", key: "overlapping_backchannels", unit: "count" },
   { label: "UNPAIRED TURNS", key: "unpaired_turns", unit: "count" },
 ] as const;
@@ -865,9 +867,14 @@ export default function Workspace() {
               <div className="remote-audio-host" ref={audioHost} aria-hidden="true" />
             </div>
           </section>
-
+          <aside className="panel protocol-panel" aria-labelledby="protocol-heading">
+            <div className="panel-head"><h2 id="protocol-heading">02 / PROTOCOL</h2><span>{String(selected + 1).padStart(2, "0")} / 08</span></div>
+            <div className="protocol-selector"><span className="kicker">SCENARIO TARGET</span><strong>{scenario.title}</strong><small>{scenario.description}</small><p>{scenario.action}</p></div>
+            <div className="scenario-list">{scenarios.map((item, index) => <button key={item.id} className={`scenario-row ${selected === index ? "scenario-selected" : ""}`} onClick={() => setSelected(index)} aria-pressed={selected === index}><span>{String(index + 1).padStart(2, "0")}</span><strong>{item.title}</strong><small>{item.tag}</small><Icon name="arrow" size={12} /></button>)}</div>
+            <div className="mode-block"><span className="kicker">AGENT POLICY / {liveState === "connected" ? "RUN LOCKED" : "SELECT BEFORE CONNECT"}</span><div className="mode-grid">{(["baseline", "backchannel", "jev_backchannel"] as Mode[]).map((item) => <button key={item} className={mode === item ? "mode-selected" : ""} disabled={liveState === "connecting" || liveState === "connected"} title={liveState === "connected" ? "Mode is fixed for the active run" : undefined} onClick={() => void changeMode(item)}>{item === "baseline" ? "BASE" : item === "backchannel" ? "TIMER" : "JEV"}</button>)}</div></div>
+          </aside>
           <section className="panel provider-panel" aria-labelledby="provider-heading">
-            <div className="panel-head"><h2 id="provider-heading">02 / PROVIDER + REPORT</h2><span className={latestMetric ? "panel-state-on" : ""}>{latestMetric ? "OBSERVED" : "WAITING"}</span></div>
+            <div className="panel-head"><h2 id="provider-heading">03 / PROVIDER + REPORT</h2><span className={latestMetric ? "panel-state-on" : ""}>{latestMetric ? "OBSERVED" : "WAITING"}</span></div>
             <div className="provider-scroll">
               <div className="provider-report-source">{liveState === "connected" ? `LIVE ROOM / ${sessionEvents.length} EVENTS · BENCHMARK BELOW IS RECORDED` : `BENCHMARK / ${reportMode}`}</div>
               <div className="provider-focus"><span className="kicker">{liveState === "connected" ? "LIVE ROOM TELEMETRY" : "LATEST TELEMETRY"}</span><strong>{providerState}</strong><small>{liveState === "connected" ? `${shortMode(mode)} / ${sessionEvents.length} LIVE EVENTS` : `${reportMode} / ${reportState === "ready" ? `${report?.run_count || 0} RUNS` : reportState.toUpperCase()}`}</small></div>
@@ -878,34 +885,24 @@ export default function Workspace() {
               {reportError && <p className="error-line" role="alert">ERR / {reportError}</p>}
             </div>
           </section>
-
           <section className="panel transcript-panel" aria-labelledby="transcript-heading">
-            <div className="panel-head"><h2 id="transcript-heading">03 / TRANSCRIPT</h2><span>{latestTranscript?.data.is_final === true ? "FINAL" : latestTranscript ? "INTERIM" : "NO DATA"}</span></div>
+            <div className="panel-head"><h2 id="transcript-heading">04 / TRANSCRIPT</h2><span>{latestTranscript?.data.is_final === true ? "FINAL" : latestTranscript ? "INTERIM" : "NO DATA"}</span></div>
             <div className="transcript-readout"><span className="prompt-symbol">&gt;_</span><p>{latestTranscript && typeof latestTranscript.data.transcript === "string" ? latestTranscript.data.transcript : latestTranscript ? "This run was recorded before the transcript text was kept." : "No transcript event recorded for this run."}</p></div>
             <div className="transcript-meta"><span>{transcriptLabel(latestTranscript)}</span><span>{latestTranscript?.elapsed_ms === undefined ? "OFFSET —" : `OFFSET ${Math.round(latestTranscript.elapsed_ms)} MS`}</span></div>
             <div className="event-rail"><span>STT EVENT RAIL</span>{sessionEvents.filter((event) => event.name === "stt_transcript").slice(-5).map((event, index) => <i key={`${event.name}-${event.elapsed_ms}-${index}`} className={event.data.is_final === true ? "rail-final" : ""} />)}</div>
           </section>
-
-          <aside className="panel protocol-panel" aria-labelledby="protocol-heading">
-            <div className="panel-head"><h2 id="protocol-heading">04 / PROTOCOL</h2><span>{String(selected + 1).padStart(2, "0")} / 08</span></div>
-            <div className="protocol-selector"><span className="kicker">SCENARIO TARGET</span><strong>{scenario.title}</strong><small>{scenario.description}</small><p>{scenario.action}</p></div>
-            <div className="scenario-list">{scenarios.map((item, index) => <button key={item.id} className={`scenario-row ${selected === index ? "scenario-selected" : ""}`} onClick={() => setSelected(index)} aria-pressed={selected === index}><span>{String(index + 1).padStart(2, "0")}</span><strong>{item.title}</strong><small>{item.tag}</small><Icon name="arrow" size={12} /></button>)}</div>
-            <div className="mode-block"><span className="kicker">AGENT POLICY / {liveState === "connected" ? "RUN LOCKED" : "SELECT BEFORE CONNECT"}</span><div className="mode-grid">{(["baseline", "backchannel", "jev_backchannel"] as Mode[]).map((item) => <button key={item} className={mode === item ? "mode-selected" : ""} disabled={liveState === "connecting" || liveState === "connected"} title={liveState === "connected" ? "Mode is fixed for the active run" : undefined} onClick={() => void changeMode(item)}>{item === "baseline" ? "BASE" : item === "backchannel" ? "TIMER" : "JEV"}</button>)}</div></div>
-          </aside>
-
-          <section className="panel feed-panel" aria-labelledby="feed-heading">
-            <div className="panel-head"><h2 id="feed-heading">05 / FAST EVENT FEED</h2><div className="feed-switch" role="tablist" aria-label="Event source"><button className={feedView === "live" ? "feed-switch-selected" : ""} onClick={() => setFeedView("live")} role="tab" aria-selected={feedView === "live"}>LIVE</button><button className={feedView === "replay" ? "feed-switch-selected" : ""} onClick={() => setFeedView("replay")} role="tab" aria-selected={feedView === "replay"}>REPLAY</button></div></div>
-            <div className="feed-source">{feedLabel} {feedView === "live" && eventState === "ready" ? "· POLL 1.2S" : ""}</div>
-            <div className="feed-list" aria-busy={feedView === "live" && eventState === "loading"}>{feedView === "live" && eventState === "offline" && <p className="empty-line">{eventError}</p>}{feedView === "live" && eventState === "loading" && <p className="empty-line">FETCHING LIFECYCLE EVENTS...</p>}{feedEvents.length === 0 && !(feedView === "live" && eventState === "loading") && <p className="empty-line">NO {feedLabel} EVENTS</p>}{feedEvents.map((event, index) => <div className="feed-row" key={`${event.timestamp || event.run_id || "event"}-${event.name}-${event.elapsed_ms}-${index}`}><span className="feed-index">{String(index + 1).padStart(2, "0")}</span><span className="feed-marker" /><strong>{eventLabel(event.name)}</strong><span className="feed-mode">{shortMode(event.mode)}</span><span className="feed-offset">{event.elapsed_ms === undefined ? "—" : `${Math.round(event.elapsed_ms)}ms`}</span><time>{eventTime(event.timestamp)}</time></div>)}</div>
-          </section>
-
           <section className="panel timeline-panel" aria-labelledby="timeline-heading">
-            <div className="panel-head"><h2 id="timeline-heading">06 / RUN TRACE</h2><label>RUN <select value={selectedRunId || ""} onChange={(event) => setSelectedRunId(event.target.value || null)}><option value="">RECORDED SCENARIO</option>{liveRunId && <option value={liveRunId}>LIVE / {liveRunId.slice(-8)}</option>}{selectableRuns.map((run) => <option key={run.run_id} value={run.run_id}>{run.mode.toUpperCase()} / {run.run_id.slice(-8)}</option>)}</select></label></div>
+            <div className="panel-head"><h2 id="timeline-heading">05 / RUN TRACE</h2><label>RUN <select value={selectedRunId || ""} onChange={(event) => setSelectedRunId(event.target.value || null)}><option value="">RECORDED SCENARIO</option>{liveRunId && <option value={liveRunId}>LIVE / {liveRunId.slice(-8)}</option>}{selectableRuns.map((run) => <option key={run.run_id} value={run.run_id}>{run.mode.toUpperCase()} / {run.run_id.slice(-8)}</option>)}</select></label></div>
             <div className="trace-controls">
               <label>COMPARE <select value={compareRunId || ""} onChange={(event) => setCompareRunId(event.target.value || null)}><option value="">OFF</option>{selectableRuns.filter((run) => run.run_id !== selectedRunId).map((run) => <option key={run.run_id} value={run.run_id}>{run.mode.toUpperCase()} / {run.run_id.slice(-8)}</option>)}</select></label>
               <span className="trace-legend"><i className="legend-primary" /> PRIMARY <i className="legend-compare" /> COMPARE</span>
             </div>
             {timelineEvents.length === 0 ? <p className="empty-line">NO RUN TRACE. START A CONVERSATION OR RUN REPLAY.</p> : <><div className="trace-axis"><span>0MS</span><span>{Math.round(timelineMax)}MS</span></div><div className="trace-lanes">{LANES.map((lane) => <div className="trace-lane" key={lane}><span>{lane.toUpperCase()}</span><div className="trace-track">{primaryTrace[lane].map((mark) => <i key={mark.key} className={`trace-${mark.kind}`} style={{ left: `${mark.left}%`, width: mark.width === undefined ? undefined : `${mark.width}%` }} title={mark.title} />)}{compareTrace?.[lane].map((mark) => <i key={`compare-${mark.key}`} className={`trace-${mark.kind} trace-compare`} style={{ left: `${mark.left}%`, width: mark.width === undefined ? undefined : `${mark.width}%` }} title={`COMPARE / ${mark.title}`} />)}</div></div>)}</div></>}
+          </section>
+          <section className="panel feed-panel" aria-labelledby="feed-heading">
+            <div className="panel-head"><h2 id="feed-heading">06 / FAST EVENT FEED</h2><div className="feed-switch" role="tablist" aria-label="Event source"><button className={feedView === "live" ? "feed-switch-selected" : ""} onClick={() => setFeedView("live")} role="tab" aria-selected={feedView === "live"}>LIVE</button><button className={feedView === "replay" ? "feed-switch-selected" : ""} onClick={() => setFeedView("replay")} role="tab" aria-selected={feedView === "replay"}>REPLAY</button></div></div>
+            <div className="feed-source">{feedLabel} {feedView === "live" && eventState === "ready" ? "· POLL 1.2S" : ""}</div>
+            <div className="feed-list" aria-busy={feedView === "live" && eventState === "loading"}>{feedView === "live" && eventState === "offline" && <p className="empty-line">{eventError}</p>}{feedView === "live" && eventState === "loading" && <p className="empty-line">FETCHING LIFECYCLE EVENTS...</p>}{feedEvents.length === 0 && !(feedView === "live" && eventState === "loading") && <p className="empty-line">NO {feedLabel} EVENTS</p>}{feedEvents.map((event, index) => <div className="feed-row" key={`${event.timestamp || event.run_id || "event"}-${event.name}-${event.elapsed_ms}-${index}`}><span className="feed-index">{String(index + 1).padStart(2, "0")}</span><span className="feed-marker" /><strong>{eventLabel(event.name)}</strong><span className="feed-mode">{shortMode(event.mode)}</span><span className="feed-offset">{event.elapsed_ms === undefined ? "—" : `${Math.round(event.elapsed_ms)}ms`}</span><time>{eventTime(event.timestamp)}</time></div>)}</div>
           </section>
         </div>
       </main>
