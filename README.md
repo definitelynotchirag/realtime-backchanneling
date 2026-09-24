@@ -557,6 +557,24 @@ those two counters first: a delta without them is provider variance, not the pol
    missing at scale is aggregation across sessions, which is exactly what
    `blue-machines-benchmark` does offline.
 
+### When a setting looks ignored
+
+Every run records the values it actually used in its `session_started` event -
+`stt_provider`, `llm_provider`, `tts_provider`, `eot_detector`, `agent_instructions`,
+`backchannel_texts`, `backchannel_clip_source`. That is not decoration. A process manager
+that keeps the environment a service was first launched with will override `.env`, because
+`load_dotenv` does not replace variables that already exist in the environment:
+
+```
+/proc/<worker pid>/environ:  BACKCHANNEL_TEXT=mm-hmm      <- from the original launch
+.env:                        BACKCHANNEL_TEXT=mm-hmm,mm,hmm
+```
+
+Three settings were silently overridden that way in one day (the provider stack, the
+spoken instruction, and the cue rotation), and in each case the code was fine and the
+configuration never reached the process - so compare the run stamp against `.env` before
+suspecting the code, and pass the value explicitly when restarting the worker.
+
 ## Checks
 
 ```bash

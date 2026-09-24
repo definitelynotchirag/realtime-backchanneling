@@ -94,6 +94,38 @@ def test_report_prefers_provider_measurements_and_keeps_replay_separate(
     assert payload["replay_observation"]["provenance"]["kind"] == "synthetic_replay"
 
 
+def test_the_run_stamp_records_the_cue_rotation_that_was_live() -> None:
+    """A launch environment can override .env, so the run says what it used.
+
+    This was a real failure: the worker ran with BACKCHANNEL_TEXT=mm-hmm from its
+    original launch environment while .env asked for three cues, so the rotation
+    looked broken in every session and nothing in the log disagreed.
+    """
+
+    from blue_machines_baseline.agent import session_stamp_fields
+    from blue_machines_baseline.config import Settings
+
+    settings = Settings.from_env(
+        {
+            "LIVEKIT_URL": "wss://example.livekit.cloud",
+            "LIVEKIT_API_KEY": "k",
+            "LIVEKIT_API_SECRET": "s",
+            "GEMINI_API_KEY": "g",
+            "STT_PROVIDER": "deepgram",
+            "DEEPGRAM_API_KEY": "d",
+            "TTS_PROVIDER": "deepgram_tts",
+            "BACKCHANNEL_TEXT": "mm-hmm,mm,hmm",
+        }
+    )
+
+    fields = session_stamp_fields(settings)
+
+    assert fields["backchannel_texts"] == ["mm-hmm", "mm", "hmm"]
+    assert fields["backchannel_clip_source"] == "tts"
+    assert fields["stt_provider"] == "deepgram"
+    assert fields["agent_instructions"] == settings.agent_instructions
+
+
 def test_report_falls_back_to_the_persisted_replay_without_labelled_sessions(
     tmp_path, monkeypatch
 ) -> None:

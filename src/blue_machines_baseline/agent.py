@@ -100,6 +100,28 @@ async def synthesize_backchannel_clips(
             await close()
 
 
+def session_stamp_fields(settings: Settings) -> dict[str, Any]:
+    """What a run is actually configured with, recorded per session.
+
+    Three times in one day a setting looked ignored because the environment a service
+    was first launched with keeps overriding .env - the provider stack, the spoken
+    instruction, the cue rotation. Recording the effective values in the run makes the
+    next one of those readable from the evidence instead of from a process listing.
+    """
+
+    return {
+        "stt_provider": settings.stt_provider,
+        "llm_provider": settings.llm_provider,
+        "tts_provider": settings.tts_provider,
+        "eot_detector": settings.eot_detector,
+        # The spoken style matters as much as the providers: a vague instruction is how
+        # a voice agent ends up reading a seven hundred word essay out loud.
+        "agent_instructions": settings.agent_instructions,
+        "backchannel_texts": list(settings.backchannel_texts),
+        "backchannel_clip_source": settings.backchannel_clip_source,
+    }
+
+
 def cue_cache_key(settings: Settings) -> str:
     """Which voice the cached cues belong to.
 
@@ -799,15 +821,7 @@ async def entrypoint(ctx: JobContext) -> None:
         backchannel_enabled=backchannel_enabled,
         scenario_id=run_context.scenario_id if run_context else None,
         run_id=run_context.run_id if run_context else None,
-        # The provider stack, so a report built from these events names the stack it
-        # measured instead of relying on when the log happened to be written.
-        stt_provider=settings.stt_provider,
-        llm_provider=settings.llm_provider,
-        tts_provider=settings.tts_provider,
-        eot_detector=settings.eot_detector,
-        # The spoken style matters as much as the providers: a vague instruction is
-        # how a voice agent ends up reading a seven hundred word essay out loud.
-        agent_instructions=settings.agent_instructions,
+        **session_stamp_fields(settings),
     )
     session = AgentSession(
         vad=silero.VAD.load(),
