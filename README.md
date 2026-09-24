@@ -355,22 +355,22 @@ in `assets/scenarios/` with a sidecar recording the text, voice and measured dur
 a re-run needs no provider call for the user's side. The worker must be running
 (`uv run blue-machines-agent dev`); timings come from its event log, not from the driver.
 
-The committed sweep was recorded on one provider stack, after LiveKit Inference returned
-HTTP 429 and ElevenLabs 402 from this machine:
+The committed sweep is 80 real rooms on one provider stack - Deepgram streaming STT, Groq
+`openai/gpt-oss-120b`, Deepgram Aura-2 streaming speech, LiveKit's turn detector - which is
+what every `session_started` event in `outputs/benchmark-events.jsonl` records:
 
 ```bash
-STT_PROVIDER=groq LLM_PROVIDER=groq TTS_PROVIDER=groq_tts EOT_DETECTOR=livekit_inference \
+STT_PROVIDER=deepgram LLM_PROVIDER=groq TTS_PROVIDER=deepgram_tts EOT_DETECTOR=livekit_inference \
   uv run blue-machines-agent dev
-uv run blue-machines-scenario --scenarios all --modes baseline,backchannel --repeats 3
+uv run blue-machines-scenario --scenarios all --modes baseline,backchannel,jev_backchannel --repeats 3
 ```
 
-Jev mode is not part of that sweep, but it is runnable: use
+All three policies are in the sweep (24 baseline, 24 timer, 32 Jev runs). Jev also runs on
 `STT_PROVIDER=groq_interim`, which transcribes Groq's endpoint on a cadence so interim
 transcripts arrive while the user speaks. With plain `STT_PROVIDER=groq` (batch, final-only)
 the Python API refuses `jev_backchannel` with a 409 before the room exists, so the UI
 explains the problem instead of leaving an empty room - which means the API and the worker
-must be started with the same `STT_PROVIDER`. With a streaming STT configured, add `jev_backchannel` to `--modes` and the
-same driver covers all three policies.
+must be started with the same `STT_PROVIDER`.
 
 ## Fairness and race analysis
 
@@ -469,20 +469,22 @@ Measured over **80 runs** across 8 scenarios and three modes - baseline, timer b
 | Audible cues | 0 | 19 | 28 |
 | Cues per long turn | 0 | 1 | 1.08 |
 | Decision → audible | — | 19 ms | 21 ms |
-| EOT delay P50 | 577 ms | 578 ms | 577 ms |
+| EOT delay P50 | 583 ms | 578 ms | 578 ms |
 | LLM TTFT P50 | 427 ms | 341 ms | 430 ms |
-| Speech TTFB P50 | 901 ms | 914 ms | 870 ms |
+| Speech TTFB P50 | 937 ms | 977 ms | 892 ms |
 | Delayed responses | 0 | 0 | 0 |
+| Cue-blocked waits | 0 | 0 | 0 |
 | End-of-turn collisions | 0 | 0 | 0 |
+| EOT-suppressed cues | 52 | 55 | 71 |
 | Cancelled cues | 0 | 0 | 3 |
 | Unpaired turns | 4 | 4 | 6 |
 <!-- results:end -->
 
 **Did backchanneling make the agent slower? Not through the pipeline.** The stage the policy
 could touch is the turn handoff, and it is identical in every arm: the turn the user ended is
-committed within a few milliseconds of the end-of-utterance metric (P50 577 ms of detector
-delay in all three arms, the metric landing 5 ms later), and the providers behind it are the
-same to within noise (LLM TTFT 427/341/430 ms, speech TTFB 901/914/870 ms). The fastest answer
+committed within a few milliseconds of the end-of-utterance metric (P50 578-583 ms of
+detector delay in all three arms, the metric landing 5 ms later), and the providers behind it
+are the same to within noise (LLM TTFT 427/341/430 ms, speech TTFB 937/977/892 ms). The fastest answer
 in each arm is also within 200 ms of the others - 1,008 / 1,121 / 1,209 ms - so a cue does not
 add to the floor.
 
@@ -498,7 +500,14 @@ repeats, or a latency-stable provider, is what a tighter claim would need.
 
 The cue path itself is clean in this sweep: 19 timer cues and 28 Jev cues became audible, each
 19-21 ms after the decision, with 0 collisions, 0 delayed responses and 3 cancelled cues (Jev
-cues still audible when the user took the floor).
+cues still audible when the user took the floor). No cue outlived the turn it was playing
+over: `cue_delays_attributed` is 0 in every arm, so no answer ever had to wait for a cue to
+finish. That is the interrupt discipline doing its job - the cue is force-stopped the moment
+the user yields - and 178 further cues were suppressed before playback when the turn detector
+judged the turn nearly over (`eot_suppressed_cues`). Those counters (`delayed_responses`,
+`cue_delays_attributed`, `collision_events`) are the policy-specific regression signals: if a
+future sweep makes the answer slower *because of a cue*, they move first. The aggregate P50
+will not tell you.
 
 Limits of this sweep, stated plainly: one worker drives one room at a time, so runs are
 sequential and `n` per arm is the number of scripted repeats, not a production sample. Six
@@ -533,7 +542,7 @@ those two counters first: a delta without them is provider variance, not the pol
 **Before running this at production scale I would change:**
 
 1. **Generate the cues for the session's voice.** The acknowledgement clips are
-   pre-rendered, which is what makes a cue audible ~2 ms after the decision - but they are
+   pre-rendered, which is what makes a cue audible ~20 ms after the decision - but they are
    fixed files, so they do not match a different agent voice. At scale they should be
    synthesised once per voice at session start, or streamed on first use, and cached.
 2. **Feed the real turn detector's probability into the EOU decision, not just the policy.**
@@ -549,7 +558,7 @@ those two counters first: a delta without them is provider variance, not the pol
    `unlikely_threshold` and `backchannel_threshold` values per language; the policy
    currently uses one threshold for all sessions.
 5. **Capacity and cost.** Each benchmark run is a real room with real STT, LLM and TTS
-   calls: budget for the provider quota (the local sweep needed 48 rooms), and pin the
+   calls: budget for the provider quota (the committed sweep needed 80 rooms), and pin the
    worker count - one worker per agent name, as the setup notes require - so dispatch stays
    unambiguous.
 6. **Observability at fleet level.** The event contract already carries everything needed
@@ -585,7 +594,7 @@ uv run python -m compileall -q src tests
 uv run python -c "import blue_machines_baseline.agent; import blue_machines_baseline.api"
 ```
 
-These checks run without provider credentials (143 tests). A real room conversation needs
+These checks run without provider credentials (193 tests). A real room conversation needs
 valid LiveKit, an LLM key, and a speech provider: Deepgram speech, the OpenRouter-hosted
 Deepgram voice, native Groq speech (after a one-time terms acceptance), LiveKit Inference,
 ElevenLabs, or the direct Gemini TTS adapter. Jev mode additionally needs `TYPESAFE_API_KEY`

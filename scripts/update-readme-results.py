@@ -68,7 +68,9 @@ def build_table(report: dict) -> str:
         _row("LLM TTFT P50", "llm_ttft_p50_ms", overall, unit="ms"),
         _row("Speech TTFB P50", "tts_ttfb_p50_ms", overall, unit="ms"),
         _row("Delayed responses", "delayed_responses", overall),
+        _row("Cue-blocked waits", "cue_delays_attributed", overall),
         _row("End-of-turn collisions", "collision_events", overall),
+        _row("EOT-suppressed cues", "eot_suppressed_cues", overall),
         _row("Cancelled cues", "cancelled_backchannels", overall),
         _row("Unpaired turns", "unpaired_turns", overall),
     ]

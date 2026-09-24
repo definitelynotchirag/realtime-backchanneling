@@ -121,6 +121,67 @@ def test_delayed_responses_counts_a_cue_the_user_had_to_talk_over() -> None:
     assert result.response_latencies_ms == (800.0, 400.0)
 
 
+def test_cue_outliving_the_turn_end_attributes_its_overhang_to_the_response() -> None:
+    events = [
+        {"name": "user_speech_started", "elapsed_ms": 0, "data": {}},
+        {"name": "backchannel_audio_started", "elapsed_ms": 1500, "data": {}},
+        {"name": "user_speech_ended", "elapsed_ms": 1800, "data": {}},
+        {"name": "backchannel_completed", "elapsed_ms": 2600, "data": {"duration_ms": 1100.0}},
+        {"name": "agent_response_started", "elapsed_ms": 3400, "data": {}},
+    ]
+
+    result = summarize_run(events, scenario_id="middle_pause", mode="backchannel", run_id="r1")
+
+    assert result.delayed_responses == 1
+    assert result.cue_delays_attributed == 1
+    # the cue held the agent's speech channel for 800 ms past the turn end
+    assert result.attributed_cue_delays_ms == (800.0,)
+
+
+def test_cue_that_finished_before_the_turn_end_is_not_attributed() -> None:
+    events = [
+        {"name": "user_speech_started", "elapsed_ms": 0, "data": {}},
+        {"name": "backchannel_audio_started", "elapsed_ms": 1000, "data": {}},
+        {"name": "backchannel_completed", "elapsed_ms": 1400, "data": {"duration_ms": 400.0}},
+        {"name": "user_speech_ended", "elapsed_ms": 3000, "data": {}},
+        {"name": "agent_response_started", "elapsed_ms": 3400, "data": {}},
+    ]
+
+    result = summarize_run(events, scenario_id="middle_pause", mode="backchannel", run_id="r1")
+
+    assert result.delayed_responses == 0
+    assert result.cue_delays_attributed == 0
+    assert result.attributed_cue_delays_ms == ()
+
+
+def test_synthesis_sentinels_and_zero_timings_are_not_measurements() -> None:
+    events = [
+        {"name": "pipeline_metric", "elapsed_ms": 0, "data": {"type": "tts_metrics", "ttfb": -1.0}},
+        {"name": "pipeline_metric", "elapsed_ms": 0, "data": {"type": "tts_metrics", "ttfb": 0.42}},
+        {"name": "pipeline_metric", "elapsed_ms": 0, "data": {"type": "llm_metrics", "ttft": -1.0}},
+    ]
+
+    result = summarize_run(events, scenario_id="short_answer", mode="baseline", run_id="r1")
+
+    assert result.tts_ttfb_ms == (420.0,)
+    assert result.llm_ttft_ms == ()
+
+
+def test_eot_suppressed_cues_are_counted_from_the_engine_signal() -> None:
+    events = [
+        {"name": "user_speech_started", "elapsed_ms": 0, "data": {}},
+        {"name": "backchannel_suppressed_eot", "elapsed_ms": 1200, "data": {}},
+        {"name": "user_speech_started", "elapsed_ms": 5000, "data": {}},
+        {"name": "backchannel_suppressed_eot", "elapsed_ms": 6100, "data": {}},
+    ]
+
+    result = summarize_run(
+        events, scenario_id="approaching_end_of_turn", mode="backchannel", run_id="r1"
+    )
+
+    assert result.eot_suppressed_cues == 2
+
+
 def test_engine_collisions_are_folded_into_eot_risk_without_double_counting() -> None:
     events = [
         {"name": "user_speech_started", "elapsed_ms": 0, "data": {}},

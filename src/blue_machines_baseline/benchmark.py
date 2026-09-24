@@ -33,6 +33,13 @@ turn's answer.
 LONG_TURN_SECONDS = 3.0
 """A user turn at least this long is long enough to deserve an acknowledgement."""
 
+CUE_ATTRIBUTION_TOLERANCE_MS = 150.0
+"""Clock slack allowed between a response starting and a cue finishing.
+
+The two markers come from different callbacks, so an answer that began as the
+cue's playback ended can be stamped a few tens of milliseconds earlier.
+"""
+
 MONOTONIC_TOLERANCE_MS = 1.0
 """Slack allowed before a backwards elapsed_ms counts as a new session origin."""
 
@@ -166,6 +173,12 @@ class RunSummary:
     audible_backchannels: int = 0
     collision_events: int = 0
     delayed_responses: int = 0
+    cue_delays_attributed: int = 0
+    attributed_cue_delays_ms: tuple[float, ...] = ()
+    """Channel-hold per cue (cue end minus turn end) for answers that had to wait."""
+
+    eot_suppressed_cues: int = 0
+    """Cues cancelled because the turn detector judged the turn nearly over."""
     long_user_turns: int = 0
     backchannels_per_long_turn: float | None = None
     backchannel_latencies_ms: tuple[float, ...] = ()
@@ -207,6 +220,7 @@ class RunSummary:
             "stt_audio_duration_ms",
             "eot_delays_ms",
             "jev_decision_latencies_ms",
+            "attributed_cue_delays_ms",
         ):
             result[key] = list(result[key])
         return result
@@ -296,6 +310,11 @@ def _metric_values(events: Sequence[object], metric_type: str, field: str) -> li
             continue
         value = data.get(field)
         if isinstance(value, (int, float)) and not isinstance(value, bool):
+            # LiveKit reports -1.0 s ("no audio") for a synthesis call that
+            # produced nothing, and a zero timing is not a measurement either;
+            # keeping them would drag a percentile down as if it were fast.
+            if float(value) <= 0:
+                continue
             values.append(round(float(value) * 1000, 3))
     return values
 
@@ -381,24 +400,35 @@ def _pair_responses_with_turns(
     after that turn ended, before the next turn begins, and within
     ``MAX_RESPONSE_WINDOW_MS``.
 
-    Returns ``(latencies_ms, unpaired_turns, delayed_responses)``.
+    Returns ``(latencies_ms, unpaired_turns, delayed_responses, attributed_delays)``.
     """
 
     response_starts = [
         _event_time(event) for event in events if _event_name(event) == "agent_response_started"
     ]
-    cue_starts = [
-        _event_time(event) for event in events if _event_name(event) == "backchannel_audio_started"
-    ]
-    cue_ends = sorted(
-        [
-            _event_time(event)
-            for event in events
-            if _event_name(event) in {"backchannel_completed", "backchannel_cancelled"}
-        ]
-    )
+    cue_windows: list[tuple[float, float | None]] = []
+    for event in events:
+        name = _event_name(event)
+        if name == "backchannel_audio_started":
+            cue_windows.append((_event_time(event), None))
+        elif name in {"backchannel_completed", "backchannel_cancelled"}:
+            for index in range(len(cue_windows) - 1, -1, -1):
+                start, end = cue_windows[index]
+                if end is None:
+                    cue_windows[index] = (start, _event_time(event))
+                    break
+    # The engine allows only one audible acknowledgement at a time, so a cue
+    # with no completion event (the recording ended while it played) can only
+    # have stayed audible until the next cue started.
+    for index, (start, end) in enumerate(cue_windows):
+        if end is not None:
+            continue
+        later = next((next_start for next_start, _ in cue_windows[index + 1 :]), None)
+        if later is not None:
+            cue_windows[index] = (start, later)
 
     latencies: list[float] = []
+    attributed: list[float] = []
     unpaired = 0
     delayed = 0
     used: set[int] = set()
@@ -422,21 +452,17 @@ def _pair_responses_with_turns(
         # A cue that was still audible when the turn ended is a cue the user had
         # to talk over, and it is the clearest way the acknowledgement can delay
         # the real answer.
-        if _cue_audible_at(turn.end, cue_starts, cue_ends):
+        if any(start <= turn.end and (end is None or end > turn.end) for start, end in cue_windows):
             delayed += 1
-    return latencies, unpaired, delayed
-
-
-def _cue_audible_at(moment: float, cue_starts: Sequence[float], cue_ends: Sequence[float]) -> bool:
-    """Whether an acknowledgement was audible at ``moment``."""
-
-    for start in cue_starts:
-        if start > moment:
-            continue
-        ended = next((end for end in cue_ends if end >= start), None)
-        if ended is None or ended > moment:
-            return True
-    return False
+        # Attribution: the answer cannot begin while the cue still holds the
+        # agent's speech channel, so a cue that outlived the turn end and was
+        # followed by the answer overhang the response by (cue end - turn end).
+        for start, end in cue_windows:
+            if end is None or not start <= turn.end < end:
+                continue
+            if answer >= end - CUE_ATTRIBUTION_TOLERANCE_MS:
+                attributed.append(round(end - turn.end, 3))
+    return latencies, unpaired, delayed, attributed
 
 
 def summarize_run(
@@ -450,6 +476,7 @@ def summarize_run(
         response_latencies,
         unpaired_turns,
         delayed_responses,
+        attributed_cue_delays,
     ) = _pair_responses_with_turns(ordered, turns)
 
     backchannel_starts = [
@@ -460,6 +487,7 @@ def summarize_run(
     ]
     cancelled = sum(_event_name(event) == "backchannel_cancelled" for event in ordered)
     collisions = sum(_event_name(event) == "backchannel_collision" for event in ordered)
+    suppressed_eot = sum(_event_name(event) == "backchannel_suppressed_eot" for event in ordered)
     end_of_turn_risks = collisions
     overlapping = 0
     for start in backchannel_starts:
@@ -530,6 +558,9 @@ def summarize_run(
         audible_backchannels=len(audible_cues),
         collision_events=collisions,
         delayed_responses=delayed_responses,
+        cue_delays_attributed=len(attributed_cue_delays),
+        attributed_cue_delays_ms=tuple(attributed_cue_delays),
+        eot_suppressed_cues=suppressed_eot,
         long_user_turns=len(long_turns),
         backchannels_per_long_turn=(
             round(cues_in_long_turns / len(long_turns), 3) if long_turns else None
@@ -584,6 +615,7 @@ def _aggregate_selected(selected: Sequence[RunSummary], *, scenario_id: str) -> 
     stt_audio_duration = [value for run in selected for value in run.stt_audio_duration_ms]
     eot_delays = [value for run in selected for value in run.eot_delays_ms]
     jev_decision_latencies = [value for run in selected for value in run.jev_decision_latencies_ms]
+    attributed_cue_delays = [value for run in selected for value in run.attributed_cue_delays_ms]
     return RunSummary(
         scenario_id=scenario_id,
         mode=mode,
@@ -600,6 +632,9 @@ def _aggregate_selected(selected: Sequence[RunSummary], *, scenario_id: str) -> 
         audible_backchannels=sum(run.audible_backchannels for run in selected),
         collision_events=sum(run.collision_events for run in selected),
         delayed_responses=sum(run.delayed_responses for run in selected),
+        cue_delays_attributed=sum(run.cue_delays_attributed for run in selected),
+        attributed_cue_delays_ms=tuple(attributed_cue_delays),
+        eot_suppressed_cues=sum(run.eot_suppressed_cues for run in selected),
         long_user_turns=sum(run.long_user_turns for run in selected),
         backchannels_per_long_turn=_pooled_per_long_turn(selected),
         cancelled_backchannels=sum(run.cancelled_backchannels for run in selected),
