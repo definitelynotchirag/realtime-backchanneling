@@ -88,6 +88,130 @@ def test_jev_classifier_allows_a_reasonable_live_backchannel() -> None:
     asyncio.run(scenario())
 
 
+def _decision(**overrides: object) -> SimpleNamespace:
+    base = {
+        "approved": True,
+        "turn_stage": "continuing",
+        "continuing_probability": 0.9,
+        "acknowledgement_helpful_probability": 0.9,
+        "expects_answer_probability": 0.0,
+        "confidence": 0.9,
+        "speech_type": "plain_continuation",
+        "cue_style": "neutral",
+        "cue_text": "mm-hmm",
+    }
+    base.update(overrides)
+    return SimpleNamespace(**base)
+
+
+def test_a_merely_unhelpful_snapshot_keeps_a_granted_approval() -> None:
+    """A cautious re-read must not cancel the cue the model already blessed."""
+
+    async def scenario() -> None:
+        calls = 0
+
+        class Classifier:
+            async def classify(self, _transcript: str, _context=None):
+                nonlocal calls
+                calls += 1
+                if calls == 1:
+                    return _decision()
+                return _decision(
+                    approved=False,
+                    continuing_probability=0.62,
+                    acknowledgement_helpful_probability=0.48,
+                    expects_answer_probability=0.4,
+                    confidence=0.5,
+                )
+
+        played = False
+
+        def play() -> FakeHandle:
+            nonlocal played
+            played = True
+            return FakeHandle()
+
+        engine = BackchannelEngine(
+            play, delay_seconds=0.05, cooldown_seconds=0, semantic_required=True
+        )
+        controller = JevTurnController(
+            engine,
+            Classifier(),
+            min_interval_seconds=0,
+            timeout_seconds=1,
+            max_approved_per_turn=5,
+            min_words_between_cues=1,
+        )
+
+        engine.user_started()
+        controller.user_started()
+        controller.on_transcript(
+            "this explanation keeps going with plenty of words in it", is_final=False
+        )
+        await asyncio.sleep(0.02)
+        controller.on_transcript(
+            "this explanation keeps going with plenty of words in it still", is_final=False
+        )
+        await asyncio.sleep(0.09)
+
+        assert calls >= 2
+        assert played is True
+        await controller.aclose()
+        await engine.aclose()
+
+    asyncio.run(scenario())
+
+
+def test_a_question_snapshot_retracts_a_granted_approval() -> None:
+    async def scenario() -> None:
+        calls = 0
+
+        class Classifier:
+            async def classify(self, _transcript: str, _context=None):
+                nonlocal calls
+                calls += 1
+                if calls == 1:
+                    return _decision()
+                return _decision(approved=False, speech_type="question_or_end")
+
+        played = False
+
+        def play() -> FakeHandle:
+            nonlocal played
+            played = True
+            return FakeHandle()
+
+        engine = BackchannelEngine(
+            play, delay_seconds=0.05, cooldown_seconds=0, semantic_required=True
+        )
+        controller = JevTurnController(
+            engine,
+            Classifier(),
+            min_interval_seconds=0,
+            timeout_seconds=1,
+            max_approved_per_turn=5,
+            min_words_between_cues=1,
+        )
+
+        engine.user_started()
+        controller.user_started()
+        controller.on_transcript(
+            "this explanation keeps going with plenty of words in it", is_final=False
+        )
+        await asyncio.sleep(0.02)
+        controller.on_transcript(
+            "this explanation keeps going with plenty of words in it still", is_final=False
+        )
+        await asyncio.sleep(0.09)
+
+        assert calls >= 2
+        assert played is False
+        await controller.aclose()
+        await engine.aclose()
+
+    asyncio.run(scenario())
+
+
 def test_jev_classifier_maps_each_safe_style_to_a_distinct_phrase() -> None:
     assert CUE_TEXT_BY_STYLE == {
         "neutral": "mm-hmm",

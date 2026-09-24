@@ -388,3 +388,47 @@ def test_token_endpoint_reports_when_no_project_answers(tmp_path, monkeypatch) -
 
     assert response.status_code == 503
     assert "answered" in response.json()["detail"]
+
+
+def test_run_summary_endpoint_recomputes_one_live_run(tmp_path, monkeypatch) -> None:
+    event_path = tmp_path / "live-events.jsonl"
+    monkeypatch.setenv("EVENT_LOG_PATH", str(event_path))
+    records = [
+        {"name": "session_started", "elapsed_ms": 0.0, "data": {}},
+        {"name": "user_speech_started", "elapsed_ms": 500.0, "data": {}},
+        {"name": "user_speech_ended", "elapsed_ms": 2000.0, "data": {}},
+        {"name": "agent_response_started", "elapsed_ms": 2600.0, "data": {}},
+    ]
+    event_path.write_text(
+        "".join(
+            json.dumps(
+                {
+                    **record,
+                    "scenario_id": "long_monologue",
+                    "mode": "backchannel",
+                    "run_id": "live-run-1",
+                }
+            )
+            + "\n"
+            for record in records
+        )
+    )
+
+    response = TestClient(app).get("/runs/live-run-1/summary")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["run_id"] == "live-run-1"
+    assert payload["scenario_id"] == "long_monologue"
+    assert payload["mode"] == "backchannel"
+    assert payload["provenance"]["kind"] == "live_run"
+    assert payload["summary"]["response_latencies_ms"] == [600.0]
+
+
+def test_run_summary_endpoint_reports_unknown_runs(tmp_path, monkeypatch) -> None:
+    monkeypatch.setenv("EVENT_LOG_PATH", str(tmp_path / "missing-events.jsonl"))
+
+    response = TestClient(app).get("/runs/never-recorded/summary")
+
+    assert response.status_code == 404
+    assert "never-recorded" in response.json()["detail"]

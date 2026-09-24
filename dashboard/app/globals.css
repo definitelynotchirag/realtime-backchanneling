@@ -141,6 +141,8 @@ h2 { font-size: 10px; letter-spacing: .08em; font-weight: 700; }
 .comparison-grid-row > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .comparison-grid-head { color: var(--muted); border-bottom: 1px solid var(--line); font-size: 7px; letter-spacing: .04em; }
 .comparison-grid-head > span:not(:first-child) { color: var(--muted); }
+.live-grid-row { display: grid; grid-template-columns: minmax(96px, 1.6fr) minmax(40px, 1fr); align-items: center; min-height: 14px; border-bottom: 1px solid var(--soft-line); font-size: 7px; }
+.live-grid-row > span:last-child { text-align: right; color: var(--muted); }
 .feed-switch { display: flex; gap: 3px; }
 .feed-switch button { padding: 2px 4px; border: 1px solid var(--line); background: #fff; color: var(--muted); font-size: 7px; letter-spacing: .05em; }
 .feed-switch .feed-switch-selected { border-color: var(--ink); background: var(--ink); color: #fff; }

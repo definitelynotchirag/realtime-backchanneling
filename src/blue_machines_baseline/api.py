@@ -17,6 +17,7 @@ from pydantic import BaseModel, Field
 
 from . import livekit_endpoints
 from .benchmark import (
+    MODES,
     REQUIRED_SCENARIO_IDS,
     SCENARIO_BY_ID,
     RunSummary,
@@ -25,6 +26,7 @@ from .benchmark import (
     report_provenance,
     run_replay_benchmark,
     summarize_event_log,
+    summarize_run,
     write_jsonl,
     write_report,
 )
@@ -231,6 +233,44 @@ def events(
 @app.get("/benchmark/report")
 def benchmark_report() -> dict[str, Any]:
     return _load_report()
+
+
+@app.get("/runs/{run_id}/summary")
+def run_summary(run_id: str) -> dict[str, Any]:
+    """Summarise one run from the live event log, for the in-call panels.
+
+    The console polls this while a room is open so the metrics block and the run
+    trace describe the conversation in progress, using exactly the analyzer the
+    recorded reports use - not a second, client-side definition of each metric.
+    """
+
+    records = [
+        record for record in load_jsonl(event_log_path_from_env()) if record.get("run_id") == run_id
+    ]
+    if not records:
+        raise HTTPException(status_code=404, detail=f"No events recorded for run {run_id}")
+    scenario_id = next(
+        (str(record.get("scenario_id")) for record in records if record.get("scenario_id")),
+        "unlabelled",
+    )
+    raw_mode = next(
+        (str(record.get("mode")) for record in records if record.get("mode")), "baseline"
+    )
+    mode: Mode = raw_mode if raw_mode in MODES else "baseline"
+    summary = summarize_run(records, scenario_id=scenario_id, mode=mode, run_id=run_id)
+    return {
+        "run_id": run_id,
+        "scenario_id": scenario_id,
+        "mode": mode,
+        "events": len(records),
+        "provenance": {
+            "kind": "live_run",
+            "label": "Live run",
+            "provider_latency_available": True,
+            "note": "Recomputed from the event log while the room is running.",
+        },
+        "summary": summary.as_dict(),
+    }
 
 
 @app.get("/benchmark/events")

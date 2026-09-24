@@ -64,6 +64,13 @@ type BenchmarkReport = {
   replay_observation?: BenchmarkReport;
 };
 type LiveKitToken = { server_url: string; participant_token: string; room_name: string; run_id: string };
+type RunSummaryResponse = {
+  run_id: string;
+  scenario_id: string;
+  mode: Mode;
+  events: number;
+  summary: Summary;
+};
 type ApiFailure = { error?: string; detail?: string };
 
 type IconProps = { name: IconName; size?: number };
@@ -302,6 +309,47 @@ export function buildTrace(events: WorkerEvent[], max: number) {
   return lanes;
 }
 
+const liveMetricRows = [
+  { label: "RESP P50", key: "response_p50_ms", unit: "ms" },
+  { label: "RESP P95", key: "response_p95_ms", unit: "ms" },
+  { label: "RESP SAMPLES", key: "response_samples", unit: "count" },
+  { label: "UNPAIRED TURNS", key: "unpaired_turns", unit: "count" },
+  { label: "AUDIBLE CUES", key: "audible_backchannels", unit: "count" },
+  { label: "CANCELLED", key: "cancelled_backchannels", unit: "count" },
+  { label: "EOT SUPPRESSED", key: "eot_suppressed_cues", unit: "count" },
+  { label: "DELAYED RESPONSES", key: "delayed_responses", unit: "count" },
+  { label: "CUE-BLOCKED WAITS", key: "cue_delays_attributed", unit: "count" },
+  { label: "LLM TTFT P50", key: "llm_ttft_p50_ms", unit: "ms" },
+  { label: "TTS TTFB P50", key: "tts_ttfb_p50_ms", unit: "ms" },
+  { label: "BACKCHANNEL P50", key: "backchannel_latency_p50_ms", unit: "ms" },
+] as const satisfies readonly { label: string; key: string; unit: MetricUnit }[];
+
+function LiveRunPanel({ runId, summary }: { runId: string; summary: Summary | null }) {
+  const samples = reportMetric(summary, "response_samples") ?? 0;
+  return (
+    <div className="comparison-block">
+      <div className="comparison-scope">
+        <span>LIVE RUN (RECOMPUTED FROM THIS ROOM&apos;S EVENTS) / {runId.slice(-8)}</span>
+        <span className="provenance-chip">{samples > 0 ? "IN PROGRESS" : "WAITING"}</span>
+      </div>
+      <div className="comparison-grid" role="table" aria-label="Live run metrics">
+        {samples === 0 && (
+          <div className="comparison-grid-row" role="row">
+            <span>WAITING FOR EVENTS</span>
+            <span>—</span>
+          </div>
+        )}
+        {liveMetricRows.map((row) => (
+          <div className="live-grid-row" role="row" key={row.key}>
+            <span>{row.label}</span>
+            <span>{formatReportMetric(reportMetric(summary, row.key), row.unit)}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function ComparisonTable({ scope, comparison, provenanceLabel }: { scope: string; comparison: Record<Mode, Summary | null> | undefined; provenanceLabel: string }) {
   return (
     <div className="comparison-block">
@@ -352,6 +400,7 @@ export default function Workspace() {
   const [benchmarkState, setBenchmarkState] = useState<"idle" | "running" | "error">("idle");
   const [benchmarkError, setBenchmarkError] = useState("");
   const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
+  const [liveSummary, setLiveSummary] = useState<RunSummaryResponse | null>(null);
   const [updatedAt, setUpdatedAt] = useState<string | null>(null);
   const [signalLevel, setSignalLevel] = useState<number | null>(null);
   const orb = useRef<HTMLDivElement>(null);
@@ -794,6 +843,12 @@ export default function Workspace() {
   }, [events, scenario.id, selectedReport]);
 
   useEffect(() => {
+    if (liveRunId) {
+      // While a room is live the trace follows it, so the panels beside it describe the
+      // conversation in progress rather than whichever recorded run came first.
+      if (selectedRunId !== liveRunId) setSelectedRunId(liveRunId);
+      return;
+    }
     if (selectableRuns.length === 0) return;
     const ids = selectableRuns.map((run) => run.run_id);
     // Keep the trace pointed at the scenario on screen, and prefer the newest run the
@@ -801,7 +856,7 @@ export default function Workspace() {
     if (selectedRunId && ids.includes(selectedRunId)) return;
     const fromFeed = [...events].reverse().find((event) => event.run_id && event.scenario_id === scenario.id);
     setSelectedRunId(fromFeed?.run_id ?? ids[ids.length - 1]);
-  }, [events, scenario.id, selectableRuns, selectedRunId]);
+  }, [events, liveRunId, scenario.id, selectableRuns, selectedRunId]);
 
   const timelineEvents = useMemo(() => {
     const local = selectedRunId
@@ -812,6 +867,34 @@ export default function Workspace() {
     const source = local.length > 0 ? local : selectedRunId ? fetchedRunEvents : [];
     return source.filter((event) => event.elapsed_ms !== undefined).sort((left, right) => (left.elapsed_ms || 0) - (right.elapsed_ms || 0));
   }, [events, fetchedRunEvents, liveRunId, replayEvents, scenario.id, selectedRunId]);
+
+  useEffect(() => {
+    // While a room is open the metrics block describes *this* conversation: the API
+    // recomputes the same analyzer used for recorded reports from this run's events.
+    if (liveState !== "connected" || !liveRunId) {
+      setLiveSummary(null);
+      return;
+    }
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const response = await fetch(`/api/runs/${encodeURIComponent(liveRunId)}/summary`, {
+          cache: "no-store",
+        });
+        if (!response.ok) return;
+        const payload = (await response.json()) as RunSummaryResponse;
+        if (!cancelled) setLiveSummary(payload);
+      } catch {
+        // Keep the last snapshot; the room may not have produced its first events yet.
+      }
+    };
+    void load();
+    const timer = setInterval(() => void load(), 2000);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [liveRunId, liveState]);
   const liveFeedEvents = useMemo(() => [...events].sort((left, right) => eventSortValue(right) - eventSortValue(left)).slice(0, 8), [events]);
   const replayFeedEvents = useMemo(() => [...replayEvents].sort((left, right) => eventSortValue(right) - eventSortValue(left)).slice(0, 8), [replayEvents]);
   const feedEvents = feedView === "live" ? liveFeedEvents : replayFeedEvents;
@@ -893,6 +976,9 @@ export default function Workspace() {
             <div className="provider-scroll">
               <div className="provider-report-source">{liveState === "connected" ? `LIVE ROOM / ${sessionEvents.length} EVENTS · BENCHMARK BELOW IS RECORDED` : `BENCHMARK / ${reportMode}`}</div>
               <div className="provider-focus"><span className="kicker">{liveState === "connected" ? "LIVE ROOM TELEMETRY" : "LATEST TELEMETRY"}</span><strong>{providerState}</strong><small>{liveState === "connected" ? `${shortMode(mode)} / ${sessionEvents.length} LIVE EVENTS` : `${reportMode} / ${reportState === "ready" ? `${report?.run_count || 0} RUNS` : reportState.toUpperCase()}`}</small></div>
+              {liveRunId && (liveState === "connected" || liveSummary) && (
+                <LiveRunPanel runId={liveRunId} summary={liveSummary?.summary ?? null} />
+              )}
               <ComparisonTable scope="ALL SCENARIOS (AGGREGATE)" comparison={report?.overall} provenanceLabel={reportMode} />
               {report?.paired && (
                 <p className="provider-note">

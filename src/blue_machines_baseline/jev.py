@@ -34,6 +34,28 @@ class JevDecision:
     cue_text: str
 
 
+def decision_withdraws_approval(decision: object) -> bool:
+    """Whether a decision retracts an already-granted approval.
+
+    The model re-reads the partial transcript on a short cadence, so most
+    snapshots are only "not helpful yet" - thin evidence, low confidence.
+    Retracting on those killed cues that a moment earlier were judged useful:
+    live sessions cancelled roughly one approved cue per audible one. Only a
+    stop signal retracts an approval: the turn is ending, or the speech
+    function says the user is asking something or is unclear.
+
+    The classifier result is duck-typed (tests and alternate clients return
+    plain objects), so a response that omits the fields retracts nothing.
+    """
+
+    if getattr(decision, "turn_stage", None) in {"nearing_end", "complete"}:
+        return True
+    speech_type = getattr(decision, "speech_type", None)
+    if speech_type is None:
+        return False
+    return speech_type not in SPEECH_TYPE_TO_CUE_STYLE
+
+
 SPEECH_TYPE_TO_CUE_STYLE = {
     "plain_continuation": "neutral",
     "list_or_story": "following",
@@ -375,7 +397,12 @@ class JevTurnController:
                 self._last_cue_text = decision.cue_text
                 self._approved_count += 1
                 self._last_approved_word_count = len(transcript.split())
-            self._engine.set_semantic_approval(decision.approved)
+                self._engine.set_semantic_approval(True)
+            elif decision_withdraws_approval(decision):
+                # A stop signal retracts a standing approval; a snapshot that
+                # is merely not helpful yet leaves it in place, so the cue the
+                # model already blessed can still fire.
+                self._engine.set_semantic_approval(False)
             self._on_event(
                 "jev_decision",
                 approved=decision.approved,
