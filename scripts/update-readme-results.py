@@ -73,8 +73,39 @@ def build_table(report: dict) -> str:
         _row("EOT-suppressed cues", "eot_suppressed_cues", overall),
         _row("Cancelled cues", "cancelled_backchannels", overall),
         _row("Unpaired turns", "unpaired_turns", overall),
+        "",
+        _paired_line(report),
     ]
     return "\n".join(lines)
+
+
+def _paired_line(report: dict) -> str:
+    """One sentence of the per-scenario comparison, so it cannot drift either."""
+
+    paired = report.get("paired") or {}
+    overall = report.get("overall") or {}
+
+    def median(mode: str, metric: str) -> str:
+        value = ((paired.get(mode) or {}).get(metric) or {}).get("median_ms")
+        return "—" if value is None else f"{value:+,.0f} ms"
+
+    def pooled_delta(mode: str) -> str:
+        value = (overall.get(mode) or {}).get("response_delta_p50_ms")
+        return "—" if value is None else f"{value / 1000:+.1f} s"
+
+    def slower(mode: str) -> int:
+        return ((paired.get(mode) or {}).get("p50") or {}).get("slower", 0)
+
+    return (
+        "Paired per-scenario deltas (median of the eight scenario deltas, baseline-relative) - "
+        f"P50: timer {median('backchannel', 'p50')}, Jev {median('jev_backchannel', 'p50')}; "
+        f"P95: timer {median('backchannel', 'p95')}, Jev {median('jev_backchannel', 'p95')} "
+        f"(scenarios slower by more than 250 ms at P50: timer {slower('backchannel')}/8, "
+        f"Jev {slower('jev_backchannel')}/8). A pooled median over all runs reads "
+        f"{pooled_delta('backchannel')} / {pooled_delta('jev_backchannel')} for the same arms, "
+        "because it mixes scenarios whose P50s differ by 5x; read the paired numbers for the arm "
+        "effect and the pooled columns for the raw sweep."
+    )
 
 
 def main() -> int:

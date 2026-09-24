@@ -43,6 +43,9 @@ cue's playback ended can be stamped a few tens of milliseconds earlier.
 MONOTONIC_TOLERANCE_MS = 1.0
 """Slack allowed before a backwards elapsed_ms counts as a new session origin."""
 
+NOISE_BAND_MS = 250.0
+"""Per-scenario deltas within this band count as indistinguishable from run noise."""
+
 
 def report_provenance(source: str) -> dict[str, Any]:
     """Return a truthful label for the measurements represented by a report."""
@@ -713,6 +716,48 @@ def aggregate_runs(runs: Sequence[RunSummary]) -> dict[Mode, RunSummary]:
     return aggregates
 
 
+def _mean(values: Sequence[float]) -> float | None:
+    if not values:
+        return None
+    return round(sum(values) / len(values), 3)
+
+
+def paired_comparison(scenario_rows: Sequence[dict[str, Any]]) -> dict[str, Any]:
+    """Compare each arm against baseline within every scenario, then summarise.
+
+    Pooling all runs into one P50 compares nothing useful: the scenarios differ
+    by roughly 5x in latency and contribute different sample counts, so a pooled
+    median mostly reflects the mix rather than the policy. The assignment asks
+    for the same interaction with and without backchanneling, which is a
+    per-scenario delta; this block keeps those deltas separate and reports their
+    median, mean and how many scenarios moved beyond the noise band.
+    """
+
+    paired: dict[str, Any] = {}
+    for mode in MODES[1:]:
+        entry: dict[str, Any] = {}
+        for metric, key in (("p50", "response_p50_ms"), ("p95", "response_p95_ms")):
+            deltas: dict[str, float] = {}
+            for row in scenario_rows:
+                comparison = row.get("comparison") or {}
+                baseline = (comparison.get("baseline") or {}).get(key)
+                experiment = (comparison.get(mode) or {}).get(key)
+                if baseline is None or experiment is None:
+                    continue
+                deltas[str(row.get("scenario_id", ""))] = round(experiment - baseline, 3)
+            values = list(deltas.values())
+            entry[metric] = {
+                "per_scenario": deltas,
+                "median_ms": _percentile(values, 0.5),
+                "mean_ms": _mean(values),
+                "slower": sum(1 for value in values if value > NOISE_BAND_MS),
+                "faster": sum(1 for value in values if value < -NOISE_BAND_MS),
+                "within_noise": sum(1 for value in values if abs(value) <= NOISE_BAND_MS),
+            }
+        paired[mode] = entry
+    return paired
+
+
 def build_report(runs: Sequence[RunSummary], *, source: str) -> dict[str, Any]:
     """Build the JSON shape consumed by the results and timeline UI."""
 
@@ -746,6 +791,7 @@ def build_report(runs: Sequence[RunSummary], *, source: str) -> dict[str, Any]:
         "run_count": len(runs),
         "scenario_count": len([row for row in scenario_rows if row["runs"]]),
         "scenarios": scenario_rows,
+        "paired": paired_comparison(scenario_rows),
         "overall": {mode: summary.as_dict() for mode, summary in overall.items()},
     }
 

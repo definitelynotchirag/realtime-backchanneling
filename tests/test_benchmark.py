@@ -2,10 +2,39 @@ from blue_machines_baseline.benchmark import (
     REQUIRED_SCENARIO_IDS,
     aggregate_runs,
     build_report,
+    paired_comparison,
     run_replay_benchmark,
     summarize_event_log,
     summarize_run,
 )
+
+
+def test_paired_comparison_weights_every_scenario_equally() -> None:
+    rows = [
+        {
+            "scenario_id": "quick",
+            "comparison": {
+                "baseline": {"response_p50_ms": 1000.0, "response_p95_ms": 1500.0},
+                "backchannel": {"response_p50_ms": 900.0, "response_p95_ms": 1400.0},
+            },
+        },
+        {
+            "scenario_id": "slow",
+            "comparison": {
+                "baseline": {"response_p50_ms": 5000.0, "response_p95_ms": 6000.0},
+                "backchannel": {"response_p50_ms": 5500.0, "response_p95_ms": 7000.0},
+            },
+        },
+    ]
+
+    paired = paired_comparison(rows)
+
+    assert paired["backchannel"]["p50"]["per_scenario"] == {"quick": -100.0, "slow": 500.0}
+    assert paired["backchannel"]["p50"]["median_ms"] == 200.0
+    assert paired["backchannel"]["p50"]["slower"] == 1
+    assert paired["backchannel"]["p50"]["faster"] == 0
+    assert paired["backchannel"]["p50"]["within_noise"] == 1
+    assert paired["backchannel"]["p95"]["median_ms"] == 450.0
 
 
 def test_response_latency_never_borrows_a_later_turn_s_response() -> None:

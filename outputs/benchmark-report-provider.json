@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-24T01:01:38.300617+00:00",
+  "generated_at": "2026-09-24T01:13:55.113802+00:00",
   "overall": {
     "backchannel": {
       "attributed_cue_delays_ms": [],
@@ -859,6 +859,80 @@
       "tts_ttfb_p50_ms": 892.235,
       "tts_ttfb_p95_ms": 1771.916,
       "unpaired_turns": 6
+    }
+  },
+  "paired": {
+    "backchannel": {
+      "p50": {
+        "faster": 2,
+        "mean_ms": -17.778,
+        "median_ms": 103.906,
+        "per_scenario": {
+          "approaching_end_of_turn": 459.853,
+          "fast_speaker": 51.375,
+          "long_monologue": 5014.67,
+          "middle_pause": -3200.637,
+          "multiple_backchannels": 214.332,
+          "noisy_audio": -2764.901,
+          "short_answer": -73.358,
+          "stop_before_ack": 156.438
+        },
+        "slower": 2,
+        "within_noise": 4
+      },
+      "p95": {
+        "faster": 3,
+        "mean_ms": 591.213,
+        "median_ms": 958.247,
+        "per_scenario": {
+          "approaching_end_of_turn": 515.938,
+          "fast_speaker": -2508.677,
+          "long_monologue": 4220.695,
+          "middle_pause": -1832.115,
+          "multiple_backchannels": 4234.578,
+          "noisy_audio": -2909.581,
+          "short_answer": 1608.313,
+          "stop_before_ack": 1400.556
+        },
+        "slower": 5,
+        "within_noise": 0
+      }
+    },
+    "jev_backchannel": {
+      "p50": {
+        "faster": 2,
+        "mean_ms": -155.353,
+        "median_ms": -81.829,
+        "per_scenario": {
+          "approaching_end_of_turn": 5120.418,
+          "fast_speaker": -64.858,
+          "long_monologue": -168.596,
+          "middle_pause": -4534.888,
+          "multiple_backchannels": -98.801,
+          "noisy_audio": -2321.8,
+          "short_answer": 552.191,
+          "stop_before_ack": 273.509
+        },
+        "slower": 3,
+        "within_noise": 3
+      },
+      "p95": {
+        "faster": 3,
+        "mean_ms": 32.96,
+        "median_ms": 184.413,
+        "per_scenario": {
+          "approaching_end_of_turn": 4909.718,
+          "fast_speaker": -2103.499,
+          "long_monologue": 101.901,
+          "middle_pause": -5283.798,
+          "multiple_backchannels": 1895.664,
+          "noisy_audio": -613.62,
+          "short_answer": 266.926,
+          "stop_before_ack": 1090.386
+        },
+        "slower": 4,
+        "within_noise": 1
+      }
     }
   },
   "provenance": {

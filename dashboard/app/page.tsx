@@ -43,6 +43,15 @@ type WorkerEvent = {
 
 type Summary = { [key: string]: unknown };
 type ReportScenario = { scenario_id: string; description: string; runs: Summary[]; comparison: Record<Mode, Summary | null> };
+type PairedMetric = {
+  per_scenario: Record<string, number>;
+  median_ms: number | null;
+  mean_ms: number | null;
+  slower: number;
+  faster: number;
+  within_noise: number;
+};
+type PairedComparison = Record<string, { p50: PairedMetric; p95: PairedMetric }>;
 type BenchmarkReport = {
   generated_at?: string;
   source: string;
@@ -50,6 +59,7 @@ type BenchmarkReport = {
   scenario_count: number;
   scenarios: ReportScenario[];
   overall: Record<Mode, Summary | null>;
+  paired?: PairedComparison;
   provenance?: { kind: string; label: string; provider_latency_available: boolean; note: string };
   replay_observation?: BenchmarkReport;
 };
@@ -199,6 +209,11 @@ function reportDelta(baseline: Summary | null | undefined, experiment: Summary |
   if (unit === "ms") return `${sign}${Math.round(delta)}ms`;
   if (unit === "ratio") return `${sign}${delta.toFixed(2)}`;
   return `${sign}${Math.round(delta)}`;
+}
+
+function signedMetric(value: number | null | undefined) {
+  if (typeof value !== "number" || !Number.isFinite(value)) return "—";
+  return `${value > 0 ? "+" : ""}${Math.round(value)}ms`;
 }
 
 export const LANES = ["user", "stt", "eot", "decision", "audio", "agent"] as const;
@@ -879,6 +894,11 @@ export default function Workspace() {
               <div className="provider-report-source">{liveState === "connected" ? `LIVE ROOM / ${sessionEvents.length} EVENTS · BENCHMARK BELOW IS RECORDED` : `BENCHMARK / ${reportMode}`}</div>
               <div className="provider-focus"><span className="kicker">{liveState === "connected" ? "LIVE ROOM TELEMETRY" : "LATEST TELEMETRY"}</span><strong>{providerState}</strong><small>{liveState === "connected" ? `${shortMode(mode)} / ${sessionEvents.length} LIVE EVENTS` : `${reportMode} / ${reportState === "ready" ? `${report?.run_count || 0} RUNS` : reportState.toUpperCase()}`}</small></div>
               <ComparisonTable scope="ALL SCENARIOS (AGGREGATE)" comparison={report?.overall} provenanceLabel={reportMode} />
+              {report?.paired && (
+                <p className="provider-note">
+                  PAIRED PER-SCENARIO Δ vs BASE (median of the eight scenario deltas; ±250ms counts as noise) / P50: TIMER {signedMetric(report.paired.backchannel?.p50?.median_ms)} · JEV {signedMetric(report.paired.jev_backchannel?.p50?.median_ms)} / P95: TIMER {signedMetric(report.paired.backchannel?.p95?.median_ms)} · JEV {signedMetric(report.paired.jev_backchannel?.p95?.median_ms)} / scenarios slower by more than 250ms at P50: TIMER {report.paired.backchannel?.p50?.slower ?? 0} · JEV {report.paired.jev_backchannel?.p50?.slower ?? 0}
+                </p>
+              )}
               <ComparisonTable scope={`SCENARIO / ${scenario.title.toUpperCase()}`} comparison={benchmarkComparison} provenanceLabel={reportMode} />
               {report?.provenance && <p className="provider-note">BENCHMARK SOURCE / {report.provenance.provider_latency_available ? "PROVIDER LATENCY MEASURED" : "PROVIDER LATENCY NOT REPORTED"} / {report.provenance.note}</p>}
               {report?.replay_observation?.provenance && <p className="provider-note">REPLAY BASELINE ALSO AVAILABLE / {report.replay_observation.provenance.label} / {report.replay_observation.provenance.note}</p>}

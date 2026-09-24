@@ -478,6 +478,8 @@ Measured over **80 runs** across 8 scenarios and three modes - baseline, timer b
 | EOT-suppressed cues | 0 | 55 | 71 |
 | Cancelled cues | 0 | 0 | 3 |
 | Unpaired turns | 4 | 4 | 6 |
+
+Paired per-scenario deltas (median of the eight scenario deltas, baseline-relative) - P50: timer +104 ms, Jev -82 ms; P95: timer +958 ms, Jev +184 ms (scenarios slower by more than 250 ms at P50: timer 2/8, Jev 3/8). A pooled median over all runs reads +1.6 s / +1.3 s for the same arms, because it mixes scenarios whose P50s differ by 5x; read the paired numbers for the arm effect and the pooled columns for the raw sweep.
 <!-- results:end -->
 
 **Did backchanneling make the agent slower? Not through the pipeline.** The stage the policy
@@ -488,15 +490,16 @@ are the same to within noise (LLM TTFT 427/341/430 ms, speech TTFB 937/977/892 m
 in each arm is also within 200 ms of the others - 1,008 / 1,121 / 1,209 ms - so a cue does not
 add to the floor.
 
-What the aggregate P50 column does **not** show is a policy effect either way, and reading it
-as one would be a mistake. Response latency in these rooms is provider-dominated: a quarter to
-a third of turns exceed 4 s in *every* arm, and the per-scenario breakdown swings in both
-directions (on `noisy_audio` the cue arms are faster, 3.3-3.9 s against 4.2-6.8 s; on
-`long_monologue` the timer arm is slower, 6.9-7.9 s against 1.7-3.7 s). With three repeats per
-scenario and arm, that variance decides the P50, which is why the earlier 495 ms "faster at
-P50" claim from the previous stack is not carried over here: what this sweep can support is
-that the policy is not on the critical path, not a sub-second claim in either direction. More
-repeats, or a latency-stable provider, is what a tighter claim would need.
+What the aggregate P50 column does **not** show is a policy effect either way, and reading it as
+one would be a mistake. The fair comparison is per scenario: pairing each scenario with itself
+gives a median ΔP50 of **+104 ms** for the timer arm and **−82 ms** for Jev (means −18 ms and
+−15 ms), with 4 of 8 scenarios inside the ±250 ms noise band in both arms and the rest split
+between faster and slower. The pooled column reads +1.6 s / +1.3 s only because it mixes
+scenarios whose P50s differ by 5× and whose sample counts differ slightly; the report's
+`paired` block carries the per-scenario deltas, and the UI prints their medians under the
+aggregate table. At P95 the paired medians are **+958 ms (timer) / +184 ms (Jev)**, with five of
+eight timer scenarios slower - the one place a tail effect could hide, and it needs more
+repeats (or a latency-stable provider) before it can be called.
 
 The cue path itself is clean in this sweep: 19 timer cues and 28 Jev cues became audible, each
 19-21 ms after the decision, with 0 collisions, 0 delayed responses and 3 cancelled cues (Jev
