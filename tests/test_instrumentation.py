@@ -115,7 +115,15 @@ def test_backchannel_speech_is_not_counted_as_an_assistant_response() -> None:
     assert [event.name for event in recorder.events] == ["backchannel_agent_speaking"]
 
 
-def test_final_public_transcript_suppresses_pending_backchannel() -> None:
+def test_final_transcript_after_the_floor_yielded_reports_no_phantom_suppression() -> None:
+    """The floor change already cancelled the cue, so there is nothing to suppress.
+
+    The final transcript still stores an end-of-turn probability of 1.0, which
+    keeps later scheduling blocked, but the suppression event is reserved for a
+    cue that was actually pending - a baseline arm never has one, which is why
+    reporting one there would be phantom data.
+    """
+
     async def run() -> list[str]:
         session = FakeSession()
         recorder = EventRecorder()
@@ -144,7 +152,7 @@ def test_final_public_transcript_suppresses_pending_backchannel() -> None:
         await asyncio.sleep(0)
         return [event.name for event in recorder.events]
 
-    assert asyncio.run(run()) == ["backchannel_suppressed_eot"]
+    assert asyncio.run(run()) == []
 
 
 def test_final_streaming_segment_does_not_end_a_still_active_user_turn() -> None:

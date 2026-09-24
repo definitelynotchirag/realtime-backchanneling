@@ -177,6 +177,32 @@ def test_backchannel_suppresses_an_acknowledgement_when_eot_is_likely() -> None:
     asyncio.run(scenario())
 
 
+def test_disabled_engine_reports_no_suppressions_or_interim_markers() -> None:
+    """A baseline arm has no cue machinery running, so it reports nothing.
+
+    The committed sweep recorded baseline runs with suppression events because
+    the engine used to emit them whenever an EOT prediction crossed the
+    threshold, whether or not a cue existed.
+    """
+
+    async def scenario() -> None:
+        events: list[str] = []
+        engine = BackchannelEngine(
+            lambda: FakeHandle(),
+            enabled=False,
+            on_event=lambda name, **_data: events.append(name),
+        )
+        engine.user_started()
+        engine.update_transcript(is_final=False)
+        engine.update_eot_probability(0.99)
+        await asyncio.sleep(0.02)
+
+        assert events == []
+        await engine.aclose()
+
+    asyncio.run(scenario())
+
+
 def test_semantic_backchannel_waits_for_approval_then_uses_remaining_delay() -> None:
     async def scenario() -> None:
         played = False

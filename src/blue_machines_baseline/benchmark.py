@@ -487,7 +487,15 @@ def summarize_run(
     ]
     cancelled = sum(_event_name(event) == "backchannel_cancelled" for event in ordered)
     collisions = sum(_event_name(event) == "backchannel_collision" for event in ordered)
-    suppressed_eot = sum(_event_name(event) == "backchannel_suppressed_eot" for event in ordered)
+    # A baseline arm cannot suppress a cue it never scheduled. Engines before the
+    # suppression event was gated on a pending cue still recorded it whenever an
+    # EOT prediction crossed the threshold, so the arm is filtered here instead
+    # of reporting phantom suppressions in the comparison table.
+    suppressed_eot = (
+        0
+        if mode == "baseline"
+        else sum(_event_name(event) == "backchannel_suppressed_eot" for event in ordered)
+    )
     end_of_turn_risks = collisions
     overlapping = 0
     for start in backchannel_starts:

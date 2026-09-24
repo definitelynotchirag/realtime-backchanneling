@@ -475,7 +475,7 @@ Measured over **80 runs** across 8 scenarios and three modes - baseline, timer b
 | Delayed responses | 0 | 0 | 0 |
 | Cue-blocked waits | 0 | 0 | 0 |
 | End-of-turn collisions | 0 | 0 | 0 |
-| EOT-suppressed cues | 52 | 55 | 71 |
+| EOT-suppressed cues | 0 | 55 | 71 |
 | Cancelled cues | 0 | 0 | 3 |
 | Unpaired turns | 4 | 4 | 6 |
 <!-- results:end -->
@@ -503,8 +503,9 @@ The cue path itself is clean in this sweep: 19 timer cues and 28 Jev cues became
 cues still audible when the user took the floor). No cue outlived the turn it was playing
 over: `cue_delays_attributed` is 0 in every arm, so no answer ever had to wait for a cue to
 finish. That is the interrupt discipline doing its job - the cue is force-stopped the moment
-the user yields - and 178 further cues were suppressed before playback when the turn detector
-judged the turn nearly over (`eot_suppressed_cues`). Those counters (`delayed_responses`,
+the user yields - and 126 further cues were suppressed before playback when the turn detector
+judged the turn nearly over (55 timer, 71 Jev; the suppression event is gated on a cue
+actually being scheduled, so the baseline arm reports none). Those counters (`delayed_responses`,
 `cue_delays_attributed`, `collision_events`) are the policy-specific regression signals: if a
 future sweep makes the answer slower *because of a cue*, they move first. The aggregate P50
 will not tell you.

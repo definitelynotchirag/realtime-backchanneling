@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-24T00:53:38.025297+00:00",
+  "generated_at": "2026-09-24T01:01:38.300617+00:00",
   "overall": {
     "backchannel": {
       "attributed_cue_delays_ms": [],
@@ -292,7 +292,7 @@
         861.162,
         865.696
       ],
-      "eot_suppressed_cues": 52,
+      "eot_suppressed_cues": 0,
       "final_transcripts": 66,
       "interim_transcripts": 195,
       "jev_decision_latencies_ms": [],
@@ -960,7 +960,7 @@
             904.34,
             848.183
           ],
-          "eot_suppressed_cues": 5,
+          "eot_suppressed_cues": 0,
           "final_transcripts": 3,
           "interim_transcripts": 3,
           "jev_decision_latencies_ms": [],
@@ -1095,7 +1095,7 @@
           "eot_delays_ms": [
             839.776
           ],
-          "eot_suppressed_cues": 2,
+          "eot_suppressed_cues": 0,
           "final_transcripts": 1,
           "interim_transcripts": 1,
           "jev_decision_latencies_ms": [],
@@ -1154,7 +1154,7 @@
           "eot_delays_ms": [
             904.34
           ],
-          "eot_suppressed_cues": 1,
+          "eot_suppressed_cues": 0,
           "final_transcripts": 1,
           "interim_transcripts": 1,
           "jev_decision_latencies_ms": [],
@@ -1213,7 +1213,7 @@
           "eot_delays_ms": [
             848.183
           ],
-          "eot_suppressed_cues": 2,
+          "eot_suppressed_cues": 0,
           "final_transcripts": 1,
           "interim_transcripts": 1,
           "jev_decision_latencies_ms": [],
@@ -1710,7 +1710,7 @@
             577.43,
             577.409
           ],
-          "eot_suppressed_cues": 7,
+          "eot_suppressed_cues": 0,
           "final_transcripts": 11,
           "interim_transcripts": 39,
           "jev_decision_latencies_ms": [],
@@ -1898,7 +1898,7 @@
           "eot_delays_ms": [
             577.683
           ],
-          "eot_suppressed_cues": 2,
+          "eot_suppressed_cues": 0,
           "final_transcripts": 4,
           "interim_transcripts": 13,
           "jev_decision_latencies_ms": [],
@@ -1959,7 +1959,7 @@
           "eot_delays_ms": [
             577.43
           ],
-          "eot_suppressed_cues": 3,
+          "eot_suppressed_cues": 0,
           "final_transcripts": 4,
           "interim_transcripts": 13,
           "jev_decision_latencies_ms": [],
@@ -2020,7 +2020,7 @@
           "eot_delays_ms": [
             577.409
           ],
-          "eot_suppressed_cues": 2,
+          "eot_suppressed_cues": 0,
           "final_transcripts": 3,
           "interim_transcripts": 13,
           "jev_decision_latencies_ms": [],
@@ -2704,7 +2704,7 @@
             882.605,
             726.125
           ],
-          "eot_suppressed_cues": 12,
+          "eot_suppressed_cues": 0,
           "final_transcripts": 6,
           "interim_transcripts": 12,
           "jev_decision_latencies_ms": [],
@@ -2855,7 +2855,7 @@
             671.114,
             686.474
           ],
-          "eot_suppressed_cues": 4,
+          "eot_suppressed_cues": 0,
           "final_transcripts": 2,
           "interim_transcripts": 4,
           "jev_decision_latencies_ms": [],
@@ -2917,7 +2917,7 @@
             712.016,
             653.191
           ],
-          "eot_suppressed_cues": 4,
+          "eot_suppressed_cues": 0,
           "final_transcripts": 2,
           "interim_transcripts": 4,
           "jev_decision_latencies_ms": [],
@@ -2979,7 +2979,7 @@
             882.605,
             726.125
           ],
-          "eot_suppressed_cues": 4,
+          "eot_suppressed_cues": 0,
           "final_transcripts": 2,
           "interim_transcripts": 4,
           "jev_decision_latencies_ms": [],
@@ -3504,7 +3504,7 @@
             582.639,
             578.239
           ],
-          "eot_suppressed_cues": 4,
+          "eot_suppressed_cues": 0,
           "final_transcripts": 9,
           "interim_transcripts": 24,
           "jev_decision_latencies_ms": [],
@@ -3693,7 +3693,7 @@
           "eot_delays_ms": [
             577.198
           ],
-          "eot_suppressed_cues": 1,
+          "eot_suppressed_cues": 0,
           "final_transcripts": 3,
           "interim_transcripts": 8,
           "jev_decision_latencies_ms": [],
@@ -3753,7 +3753,7 @@
           "eot_delays_ms": [
             582.639
           ],
-          "eot_suppressed_cues": 1,
+          "eot_suppressed_cues": 0,
           "final_transcripts": 3,
           "interim_transcripts": 8,
           "jev_decision_latencies_ms": [],
@@ -3814,7 +3814,7 @@
           "eot_delays_ms": [
             578.239
           ],
-          "eot_suppressed_cues": 2,
+          "eot_suppressed_cues": 0,
           "final_transcripts": 3,
           "interim_transcripts": 8,
           "jev_decision_latencies_ms": [],
@@ -4507,7 +4507,7 @@
             619.579,
             578.526
           ],
-          "eot_suppressed_cues": 6,
+          "eot_suppressed_cues": 0,
           "final_transcripts": 9,
           "interim_transcripts": 22,
           "jev_decision_latencies_ms": [],
@@ -4703,7 +4703,7 @@
           "eot_delays_ms": [
             578.135
           ],
-          "eot_suppressed_cues": 2,
+          "eot_suppressed_cues": 0,
           "final_transcripts": 3,
           "interim_transcripts": 7,
           "jev_decision_latencies_ms": [],
@@ -4768,7 +4768,7 @@
           "eot_delays_ms": [
             619.579
           ],
-          "eot_suppressed_cues": 2,
+          "eot_suppressed_cues": 0,
           "final_transcripts": 3,
           "interim_transcripts": 8,
           "jev_decision_latencies_ms": [],
@@ -4833,7 +4833,7 @@
           "eot_delays_ms": [
             578.526
           ],
-          "eot_suppressed_cues": 2,
+          "eot_suppressed_cues": 0,
           "final_transcripts": 3,
           "interim_transcripts": 7,
           "jev_decision_latencies_ms": [],
@@ -5531,7 +5531,7 @@
             577.797,
             577.431
           ],
-          "eot_suppressed_cues": 6,
+          "eot_suppressed_cues": 0,
           "final_transcripts": 6,
           "interim_transcripts": 18,
           "jev_decision_latencies_ms": [],
@@ -5702,7 +5702,7 @@
           "eot_delays_ms": [
             577.348
           ],
-          "eot_suppressed_cues": 2,
+          "eot_suppressed_cues": 0,
           "final_transcripts": 2,
           "interim_transcripts": 6,
           "jev_decision_latencies_ms": [],
@@ -5765,7 +5765,7 @@
           "eot_delays_ms": [
             577.797
           ],
-          "eot_suppressed_cues": 2,
+          "eot_suppressed_cues": 0,
           "final_transcripts": 2,
           "interim_transcripts": 6,
           "jev_decision_latencies_ms": [],
@@ -5828,7 +5828,7 @@
           "eot_delays_ms": [
             577.431
           ],
-          "eot_suppressed_cues": 2,
+          "eot_suppressed_cues": 0,
           "final_transcripts": 2,
           "interim_transcripts": 6,
           "jev_decision_latencies_ms": [],
@@ -6399,7 +6399,7 @@
             577.929,
             577.089
           ],
-          "eot_suppressed_cues": 6,
+          "eot_suppressed_cues": 0,
           "final_transcripts": 19,
           "interim_transcripts": 69,
           "jev_decision_latencies_ms": [],
@@ -6778,7 +6778,7 @@
           "eot_delays_ms": [
             577.461
           ],
-          "eot_suppressed_cues": 2,
+          "eot_suppressed_cues": 0,
           "final_transcripts": 7,
           "interim_transcripts": 23,
           "jev_decision_latencies_ms": [],
@@ -6847,7 +6847,7 @@
           "eot_delays_ms": [
             577.929
           ],
-          "eot_suppressed_cues": 2,
+          "eot_suppressed_cues": 0,
           "final_transcripts": 6,
           "interim_transcripts": 23,
           "jev_decision_latencies_ms": [],
@@ -6915,7 +6915,7 @@
           "eot_delays_ms": [
             577.089
           ],
-          "eot_suppressed_cues": 2,
+          "eot_suppressed_cues": 0,
           "final_transcripts": 6,
           "interim_transcripts": 23,
           "jev_decision_latencies_ms": [],
@@ -7493,7 +7493,7 @@
             861.162,
             865.696
           ],
-          "eot_suppressed_cues": 6,
+          "eot_suppressed_cues": 0,
           "final_transcripts": 3,
           "interim_transcripts": 8,
           "jev_decision_latencies_ms": [],
@@ -7636,7 +7636,7 @@
           "eot_delays_ms": [
             854.677
           ],
-          "eot_suppressed_cues": 2,
+          "eot_suppressed_cues": 0,
           "final_transcripts": 1,
           "interim_transcripts": 2,
           "jev_decision_latencies_ms": [],
@@ -7697,7 +7697,7 @@
           "eot_delays_ms": [
             861.162
           ],
-          "eot_suppressed_cues": 2,
+          "eot_suppressed_cues": 0,
           "final_transcripts": 1,
           "interim_transcripts": 3,
           "jev_decision_latencies_ms": [],
@@ -7758,7 +7758,7 @@
           "eot_delays_ms": [
             865.696
           ],
-          "eot_suppressed_cues": 2,
+          "eot_suppressed_cues": 0,
           "final_transcripts": 1,
           "interim_transcripts": 3,
           "jev_decision_latencies_ms": [],

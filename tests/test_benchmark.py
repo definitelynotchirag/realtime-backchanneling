@@ -180,6 +180,10 @@ def test_eot_suppressed_cues_are_counted_from_the_engine_signal() -> None:
     )
 
     assert result.eot_suppressed_cues == 2
+    baseline = summarize_run(
+        events, scenario_id="approaching_end_of_turn", mode="baseline", run_id="r2"
+    )
+    assert baseline.eot_suppressed_cues == 0
 
 
 def test_engine_collisions_are_folded_into_eot_risk_without_double_counting() -> None:

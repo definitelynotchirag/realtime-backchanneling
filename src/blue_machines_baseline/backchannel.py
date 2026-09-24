@@ -215,10 +215,16 @@ class BackchannelEngine:
         """Suppress a pending acknowledgement when a turn is likely complete."""
 
         self._eot_probability = probability
-        if probability is not None and probability >= self._eot_threshold:
-            self._generation += 1
-            self._cancel_pending()
-            self._on_event("backchannel_suppressed_eot")
+        if probability is None or probability < self._eot_threshold:
+            return
+        if self._pending_task is None:
+            # Nothing is scheduled (disabled, not yet eligible, or already
+            # played), so the prediction suppresses nothing. Reporting it would
+            # put phantom suppressions into a baseline arm that never had a cue.
+            return
+        self._generation += 1
+        self._cancel_pending()
+        self._on_event("backchannel_suppressed_eot")
 
     def set_eot_threshold(self, threshold: float) -> None:
         """Adopt a detector's own calibrated end-of-turn boundary.
@@ -241,7 +247,7 @@ class BackchannelEngine:
         changing the engine's lifecycle contract.
         """
 
-        if self._speaking and not is_final:
+        if self._enabled and self._speaking and not is_final:
             self._emit("backchannel_interim_transcript")
 
     def mark_audio_started(self) -> None:
