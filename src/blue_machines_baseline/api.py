@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 from collections.abc import Sequence
 from pathlib import Path
@@ -14,6 +15,7 @@ from fastapi import FastAPI, HTTPException, Query
 from livekit import api as livekit_api
 from pydantic import BaseModel, Field
 
+from . import livekit_endpoints
 from .benchmark import (
     REQUIRED_SCENARIO_IDS,
     SCENARIO_BY_ID,
@@ -26,9 +28,16 @@ from .benchmark import (
     write_jsonl,
     write_report,
 )
-from .config import BATCH_ONLY_STT_PROVIDERS, JEV_INTERIM_STT_ERROR, event_log_path_from_env
+from .config import (
+    BATCH_ONLY_STT_PROVIDERS,
+    JEV_INTERIM_STT_ERROR,
+    ConfigurationError,
+    event_log_path_from_env,
+)
 
 load_dotenv()
+
+logger = logging.getLogger("blue-machines-api")
 
 app = FastAPI(
     title="Blue Machines Baseline API",
@@ -261,14 +270,22 @@ def livekit_token(request: LiveKitTokenRequest) -> dict[str, str]:
             status_code=409,
             detail=JEV_INTERIM_STT_ERROR.format(provider=stt_provider),
         )
-    api_key = os.environ.get("LIVEKIT_API_KEY", "").strip()
-    api_secret = os.environ.get("LIVEKIT_API_SECRET", "").strip()
-    server_url = os.environ.get("LIVEKIT_URL", "").strip()
-    if not api_key or not api_secret or not server_url:
+    try:
+        endpoint = livekit_endpoints.resolve_active_endpoint()
+    except ConfigurationError as exc:
         raise HTTPException(
             status_code=503,
-            detail="LiveKit credentials are not configured in the Python API environment",
+            detail=f"LiveKit credentials are not configured in the Python API environment: {exc}",
+        ) from exc
+    if endpoint is None:
+        raise HTTPException(
+            status_code=503,
+            detail="No configured LiveKit project answered a probe",
         )
+    api_key = endpoint.api_key
+    api_secret = endpoint.api_secret
+    server_url = endpoint.url
+    logger.info("issuing a join token for livekit %s (%s)", endpoint.label, endpoint.url)
 
     run_id = uuid4().hex[:12]
     room_name = f"blue-machines-{request.scenario_id}-{run_id}"

@@ -18,7 +18,14 @@ from livekit.agents import Agent, AgentServer, AgentSession, JobContext, cli, in
 from livekit.plugins import elevenlabs, google, groq, openai, silero
 from typesafe_sdk import AsyncTypeSafeClient, RetryPolicy
 
-from . import deepgram_stt, deepgram_tts, gemini_tts, groq_interim_stt, openrouter_tts
+from . import (
+    deepgram_stt,
+    deepgram_tts,
+    gemini_tts,
+    groq_interim_stt,
+    livekit_endpoints,
+    openrouter_tts,
+)
 from .backchannel import BackchannelEngine
 from .benchmark import parse_run_context
 from .config import JEV_INTERIM_STT_ERROR, ConfigurationError, Settings
@@ -897,6 +904,9 @@ async def entrypoint(ctx: JobContext) -> None:
 def build_server(settings: Settings) -> AgentServer:
     """Build a configured worker without reading secrets at import time."""
 
+    settings, endpoint = livekit_endpoints.apply_endpoint(settings)
+    if endpoint is not None:
+        logger.info("livekit project: %s (%s)", endpoint.label, endpoint.url)
     server = AgentServer(
         ws_url=settings.livekit_url,
         api_key=settings.livekit_api_key.get_secret_value(),

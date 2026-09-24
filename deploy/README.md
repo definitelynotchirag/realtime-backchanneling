@@ -96,6 +96,17 @@ sudo journalctl -u actions.runner.definitelynotchirag-realtime-backchanneling.vp
 Still manual by design: secret changes (`.env` is not in the repo), runner
 software updates, and security-group changes.
 
+## LiveKit project fallbacks
+
+`.env` may list extra LiveKit projects as `LIVEKIT_URL_2` /
+`LIVEKIT_API_KEY_2` / `LIVEKIT_API_SECRET_2` (and `_3`, ...). With more than one
+project configured, the first one that answers a probe call is used, and the
+choice is cached in `.runtime/livekit-active.json` for 45 seconds so the worker
+and the API agree on it. An expired-credit project fails its probe and the next
+one takes over; a token minted by the API always targets the project the worker
+is registered to. A partial fallback (a URL without its key) is a startup
+error, not a silently ignored entry.
+
 ## Operations
 
 ```bash

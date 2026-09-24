@@ -1,3 +1,4 @@
+import base64
 import json
 
 from fastapi.testclient import TestClient
@@ -310,3 +311,48 @@ def test_report_is_blocked_when_only_other_stacks_have_runs(tmp_path, monkeypatc
 
     assert payload["run_count"] == 0
     assert payload["provenance"]["kind"] == "blocked"
+
+
+def test_token_uses_the_active_fallback_project(tmp_path, monkeypatch) -> None:
+    """A dead primary must mint tokens for the fallback the worker uses."""
+
+    monkeypatch.setenv("LIVEKIT_URL", "wss://primary.livekit.cloud")
+    monkeypatch.setenv("LIVEKIT_API_KEY", "key-primary")
+    monkeypatch.setenv("LIVEKIT_API_SECRET", "secret-primary")
+    monkeypatch.setenv("LIVEKIT_URL_2", "wss://fallback.livekit.cloud")
+    monkeypatch.setenv("LIVEKIT_API_KEY_2", "key-fallback")
+    monkeypatch.setenv("LIVEKIT_API_SECRET_2", "secret-fallback")
+    monkeypatch.setenv("LIVEKIT_STATE_PATH", str(tmp_path / "state.json"))
+    monkeypatch.setattr(
+        "blue_machines_baseline.livekit_endpoints._probe",
+        lambda endpoint: endpoint.url.endswith("fallback.livekit.cloud"),
+    )
+
+    response = TestClient(app).post(
+        "/livekit/token", json={"scenario_id": "short_answer", "mode": "baseline"}
+    )
+
+    assert response.status_code == 201
+    payload = response.json()
+    assert payload["server_url"] == "wss://fallback.livekit.cloud"
+    encoded = payload["participant_token"].split(".")[1]
+    claims = json.loads(base64.urlsafe_b64decode(encoded + "=" * (-len(encoded) % 4)))
+    assert claims["iss"] == "key-fallback"
+
+
+def test_token_endpoint_reports_when_no_project_answers(tmp_path, monkeypatch) -> None:
+    monkeypatch.setenv("LIVEKIT_URL", "wss://primary.livekit.cloud")
+    monkeypatch.setenv("LIVEKIT_API_KEY", "key-primary")
+    monkeypatch.setenv("LIVEKIT_API_SECRET", "secret-primary")
+    monkeypatch.setenv("LIVEKIT_URL_2", "wss://fallback.livekit.cloud")
+    monkeypatch.setenv("LIVEKIT_API_KEY_2", "key-fallback")
+    monkeypatch.setenv("LIVEKIT_API_SECRET_2", "secret-fallback")
+    monkeypatch.setenv("LIVEKIT_STATE_PATH", str(tmp_path / "state.json"))
+    monkeypatch.setattr("blue_machines_baseline.livekit_endpoints._probe", lambda _endpoint: False)
+
+    response = TestClient(app).post(
+        "/livekit/token", json={"scenario_id": "short_answer", "mode": "baseline"}
+    )
+
+    assert response.status_code == 503
+    assert "answered" in response.json()["detail"]

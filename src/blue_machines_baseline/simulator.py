@@ -41,6 +41,7 @@ from dotenv import load_dotenv
 from livekit import api as livekit_api
 from livekit import rtc
 
+from . import livekit_endpoints
 from .agent import create_scenario_tts
 from .benchmark import SCENARIO_BY_ID, SCENARIOS, BenchmarkScenario
 from .config import ConfigurationError, Settings
@@ -827,6 +828,9 @@ def main(argv: list[str] | None = None) -> None:
     except ConfigurationError as exc:
         print(f"Configuration error: {exc}", file=sys.stderr)
         raise SystemExit(2) from exc
+    settings, endpoint = livekit_endpoints.apply_endpoint(settings)
+    if endpoint is not None:
+        print(f"livekit project: {endpoint.url} ({endpoint.label})")
     scenario_ids = resolve_scenarios(args.scenarios)
 
     if args.generate_audio:
