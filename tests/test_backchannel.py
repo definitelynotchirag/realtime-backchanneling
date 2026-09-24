@@ -610,7 +610,11 @@ def test_the_timer_policy_rotates_through_its_configured_cues() -> None:
             session.callbacks["user_state_changed"](SimpleNamespace(new_state="listening"))
             session.callbacks["agent_state_changed"](SimpleNamespace(new_state="listening"))
 
-        assert [call["text"] for call in session.say_calls] == ["mm-hmm", "mm", "hmm"]
+        # Which cue starts the rotation is random, so assert the cycle rather than the
+        # order: three consecutive cues are the three configured cues, none repeated.
+        played = [call["text"] for call in session.say_calls]
+        assert sorted(played) == ["hmm", "mm", "mm-hmm"]
+        assert all(left != right for left, right in zip(played, played[1:], strict=False))
         await engine.aclose()
 
     asyncio.run(scenario())

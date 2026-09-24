@@ -597,34 +597,59 @@ export default function Workspace() {
     }
   }, []);
 
+  const [loadAttempt, setLoadAttempt] = useState(0);
+
   const loadExperimentData = useCallback(async () => {
     setEventState("loading");
     setReportState("loading");
     setEventError("");
     setReportError("");
+    // Three independent sources, settled independently. They used to be one Promise.all:
+    // a single stalled fetch left the report, the feed and the run trace empty for the
+    // life of the tab, because the rejection skipped every state update and nothing ever
+    // retried. Each fetch now has a deadline so a stall becomes an error with a retry
+    // rather than a promise that never settles.
+    const deadline = () => AbortSignal.timeout(20000);
+    const [reportResult, eventsResult, replayResult] = await Promise.allSettled([
+      fetch("/api/benchmark/report", { cache: "no-store", signal: deadline() }),
+      fetch("/api/events?limit=5000", { cache: "no-store", signal: deadline() }),
+      fetch("/api/benchmark/events?limit=5000", { cache: "no-store", signal: deadline() }),
+    ]);
+
+    let nextReport: BenchmarkReport | null = null;
     try {
-      const [reportResponse, eventsResponse, replayResponse] = await Promise.all([
-        fetch("/api/benchmark/report", { cache: "no-store" }),
-        fetch("/api/events?limit=5000", { cache: "no-store" }),
-        fetch("/api/benchmark/events?limit=5000", { cache: "no-store" }),
-      ]);
-      if (!reportResponse.ok) throw new Error("Benchmark results are unavailable. Start the Python API on port 8000.");
-      const nextReport = await reportResponse.json() as BenchmarkReport;
+      if (reportResult.status !== "fulfilled" || !reportResult.value.ok) {
+        throw new Error("Benchmark results are unavailable. Start the Python API on port 8000.");
+      }
+      nextReport = (await reportResult.value.json()) as BenchmarkReport;
       setReport(nextReport);
       setReportState("ready");
-      if (!eventsResponse.ok) throw new Error("The lifecycle event API is unavailable.");
-      setEvents(readEvents(await eventsResponse.json()));
-      setReplayEvents(replayResponse.ok ? readEvents(await replayResponse.json()) : []);
+    } catch (error) {
+      setReportError(error instanceof Error ? error.message : "Could not load the benchmark report.");
+      setReportState("offline");
+    }
+
+    try {
+      if (eventsResult.status !== "fulfilled" || !eventsResult.value.ok) {
+        throw new Error("The lifecycle event API is unavailable.");
+      }
+      setEvents(readEvents(await eventsResult.value.json()));
       setEventState("ready");
-      setUpdatedAt(new Date().toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", second: "2-digit" }));
+    } catch (error) {
+      setEventError(error instanceof Error ? error.message : "Could not load lifecycle events.");
+      setEventState("offline");
+    }
+
+    if (replayResult.status === "fulfilled" && replayResult.value.ok) {
+      setReplayEvents(readEvents(await replayResult.value.json()));
+    }
+
+    setUpdatedAt(new Date().toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", second: "2-digit" }));
+    if (nextReport) {
+      // Pick the run for the trace from the report itself, not from the event feed: the
+      // feed can be empty or slow and the trace should still have something to draw.
       const firstRun = nextReport.scenarios.find((row) => row.runs.length > 0)?.runs[0];
       setSelectedRunId((current) => current || (typeof firstRun?.run_id === "string" ? firstRun.run_id : null));
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Could not load experiment data.";
-      setReportError(message);
-      setEventError(message);
-      setReportState("offline");
-      setEventState("offline");
     }
   }, []);
 
@@ -659,6 +684,19 @@ export default function Workspace() {
       roomRef.current = null;
     };
   }, [loadExperimentData, releaseLiveSignal, releaseMicrophone]);
+
+  // A failed load retries on its own. It used to need a manual refresh: the report and
+  // the trace stayed empty for the life of the tab after one unlucky start, which reads
+  // as "the metrics are missing" rather than "the first request timed out".
+  useEffect(() => {
+    if (reportState !== "offline" && eventState !== "offline") return;
+    const timer = setTimeout(() => setLoadAttempt((attempt) => attempt + 1), 8000);
+    return () => clearTimeout(timer);
+  }, [reportState, eventState, loadAttempt]);
+
+  useEffect(() => {
+    if (loadAttempt > 0) void loadExperimentData();
+  }, [loadAttempt, loadExperimentData]);
 
   useEffect(() => {
     if (liveState !== "connected") return;
@@ -704,19 +742,49 @@ export default function Workspace() {
 
   const selectedReport = report?.scenarios.find((row) => row.scenario_id === scenario.id);
   const sessionEvents = useMemo(() => {
-    const filtered = liveRunId ? events.filter((event) => event.run_id === liveRunId) : events.filter((event) => !event.run_id || event.scenario_id === scenario.id);
-    return filtered.sort((left, right) => eventSortValue(left) - eventSortValue(right));
-  }, [events, liveRunId, scenario.id]);
+    // Scoped to what the reader is looking at: the live room while connected, otherwise
+    // the run selected in the trace. These panels - session readouts, telemetry and the
+    // transcript - used to mix every run of the scenario, so the transcript could belong
+    // to a different run than the timeline beside it.
+    let filtered: WorkerEvent[];
+    if (liveRunId) {
+      filtered = events.filter((event) => event.run_id === liveRunId);
+    } else if (selectedRunId) {
+      const local = events.filter((event) => event.run_id === selectedRunId);
+      filtered = local.length > 0 ? local : fetchedRunEvents;
+    } else {
+      filtered = events.filter((event) => !event.run_id || event.scenario_id === scenario.id);
+    }
+    return [...filtered].sort((left, right) => eventSortValue(left) - eventSortValue(right));
+  }, [events, fetchedRunEvents, liveRunId, scenario.id, selectedRunId]);
+  // Everything the trace can be pointed at: the report's recorded runs for this
+  // scenario, plus the runs the event feed knows about. The report is a frozen
+  // artefact, so without the second source a conversation that just finished - with its
+  // own transcript and trace - is not selectable at all.
+  const selectableRuns = useMemo(() => {
+    const seen = new Map<string, { run_id: string; mode: string }>();
+    for (const run of selectedReport?.runs ?? []) {
+      const runId = String(run.run_id);
+      seen.set(runId, { run_id: runId, mode: String(run.mode) });
+    }
+    for (const event of events) {
+      if (!event.run_id || event.scenario_id !== scenario.id) continue;
+      const mode = event.mode ?? "backchannel";
+      const existing = seen.get(event.run_id);
+      seen.set(event.run_id, { run_id: event.run_id, mode: existing?.mode ?? mode });
+    }
+    return [...seen.values()];
+  }, [events, scenario.id, selectedReport]);
+
   useEffect(() => {
-    const runs = selectedReport?.runs ?? [];
-    if (runs.length === 0) return;
-    const ids = runs.map((run) => String(run.run_id));
-    // Keep the trace pointed at a run of the scenario on screen, and prefer the
-    // most recent one: an old, quieter run should not be the first thing a
-    // reader sees.
+    if (selectableRuns.length === 0) return;
+    const ids = selectableRuns.map((run) => run.run_id);
+    // Keep the trace pointed at the scenario on screen, and prefer the newest run the
+    // feed has seen: after a conversation that is the one the reader wants.
     if (selectedRunId && ids.includes(selectedRunId)) return;
-    setSelectedRunId(ids[ids.length - 1]);
-  }, [selectedReport, selectedRunId]);
+    const fromFeed = [...events].reverse().find((event) => event.run_id && event.scenario_id === scenario.id);
+    setSelectedRunId(fromFeed?.run_id ?? ids[ids.length - 1]);
+  }, [events, scenario.id, selectableRuns, selectedRunId]);
 
   const timelineEvents = useMemo(() => {
     const local = selectedRunId
@@ -798,22 +866,8 @@ export default function Workspace() {
             </div>
           </section>
 
-          <aside className="panel protocol-panel" aria-labelledby="protocol-heading">
-            <div className="panel-head"><h2 id="protocol-heading">02 / PROTOCOL</h2><span>{String(selected + 1).padStart(2, "0")} / 08</span></div>
-            <div className="protocol-selector"><span className="kicker">SCENARIO TARGET</span><strong>{scenario.title}</strong><small>{scenario.description}</small><p>{scenario.action}</p></div>
-            <div className="scenario-list">{scenarios.map((item, index) => <button key={item.id} className={`scenario-row ${selected === index ? "scenario-selected" : ""}`} onClick={() => setSelected(index)} aria-pressed={selected === index}><span>{String(index + 1).padStart(2, "0")}</span><strong>{item.title}</strong><small>{item.tag}</small><Icon name="arrow" size={12} /></button>)}</div>
-            <div className="mode-block"><span className="kicker">AGENT POLICY / {liveState === "connected" ? "RUN LOCKED" : "SELECT BEFORE CONNECT"}</span><div className="mode-grid">{(["baseline", "backchannel", "jev_backchannel"] as Mode[]).map((item) => <button key={item} className={mode === item ? "mode-selected" : ""} disabled={liveState === "connecting" || liveState === "connected"} title={liveState === "connected" ? "Mode is fixed for the active run" : undefined} onClick={() => void changeMode(item)}>{item === "baseline" ? "BASE" : item === "backchannel" ? "TIMER" : "JEV"}</button>)}</div></div>
-          </aside>
-
-          <section className="panel transcript-panel" aria-labelledby="transcript-heading">
-            <div className="panel-head"><h2 id="transcript-heading">03 / TRANSCRIPT</h2><span>{latestTranscript?.data.is_final === true ? "FINAL" : latestTranscript ? "INTERIM" : "NO DATA"}</span></div>
-            <div className="transcript-readout"><span className="prompt-symbol">&gt;_</span><p>{latestTranscript && typeof latestTranscript.data.transcript === "string" ? latestTranscript.data.transcript : "Transcript text is not emitted by the worker event contract."}</p></div>
-            <div className="transcript-meta"><span>{transcriptLabel(latestTranscript)}</span><span>{latestTranscript?.elapsed_ms === undefined ? "OFFSET —" : `OFFSET ${Math.round(latestTranscript.elapsed_ms)} MS`}</span></div>
-            <div className="event-rail"><span>STT EVENT RAIL</span>{sessionEvents.filter((event) => event.name === "stt_transcript").slice(-5).map((event, index) => <i key={`${event.name}-${event.elapsed_ms}-${index}`} className={event.data.is_final === true ? "rail-final" : ""} />)}</div>
-          </section>
-
           <section className="panel provider-panel" aria-labelledby="provider-heading">
-            <div className="panel-head"><h2 id="provider-heading">04 / PROVIDER + REPORT</h2><span className={latestMetric ? "panel-state-on" : ""}>{latestMetric ? "OBSERVED" : "WAITING"}</span></div>
+            <div className="panel-head"><h2 id="provider-heading">02 / PROVIDER + REPORT</h2><span className={latestMetric ? "panel-state-on" : ""}>{latestMetric ? "OBSERVED" : "WAITING"}</span></div>
             <div className="provider-scroll">
               <div className="provider-report-source">{liveState === "connected" ? `LIVE ROOM / ${sessionEvents.length} EVENTS · BENCHMARK BELOW IS RECORDED` : `BENCHMARK / ${reportMode}`}</div>
               <div className="provider-focus"><span className="kicker">{liveState === "connected" ? "LIVE ROOM TELEMETRY" : "LATEST TELEMETRY"}</span><strong>{providerState}</strong><small>{liveState === "connected" ? `${shortMode(mode)} / ${sessionEvents.length} LIVE EVENTS` : `${reportMode} / ${reportState === "ready" ? `${report?.run_count || 0} RUNS` : reportState.toUpperCase()}`}</small></div>
@@ -825,6 +879,20 @@ export default function Workspace() {
             </div>
           </section>
 
+          <section className="panel transcript-panel" aria-labelledby="transcript-heading">
+            <div className="panel-head"><h2 id="transcript-heading">03 / TRANSCRIPT</h2><span>{latestTranscript?.data.is_final === true ? "FINAL" : latestTranscript ? "INTERIM" : "NO DATA"}</span></div>
+            <div className="transcript-readout"><span className="prompt-symbol">&gt;_</span><p>{latestTranscript && typeof latestTranscript.data.transcript === "string" ? latestTranscript.data.transcript : latestTranscript ? "This run was recorded before the transcript text was kept." : "No transcript event recorded for this run."}</p></div>
+            <div className="transcript-meta"><span>{transcriptLabel(latestTranscript)}</span><span>{latestTranscript?.elapsed_ms === undefined ? "OFFSET —" : `OFFSET ${Math.round(latestTranscript.elapsed_ms)} MS`}</span></div>
+            <div className="event-rail"><span>STT EVENT RAIL</span>{sessionEvents.filter((event) => event.name === "stt_transcript").slice(-5).map((event, index) => <i key={`${event.name}-${event.elapsed_ms}-${index}`} className={event.data.is_final === true ? "rail-final" : ""} />)}</div>
+          </section>
+
+          <aside className="panel protocol-panel" aria-labelledby="protocol-heading">
+            <div className="panel-head"><h2 id="protocol-heading">04 / PROTOCOL</h2><span>{String(selected + 1).padStart(2, "0")} / 08</span></div>
+            <div className="protocol-selector"><span className="kicker">SCENARIO TARGET</span><strong>{scenario.title}</strong><small>{scenario.description}</small><p>{scenario.action}</p></div>
+            <div className="scenario-list">{scenarios.map((item, index) => <button key={item.id} className={`scenario-row ${selected === index ? "scenario-selected" : ""}`} onClick={() => setSelected(index)} aria-pressed={selected === index}><span>{String(index + 1).padStart(2, "0")}</span><strong>{item.title}</strong><small>{item.tag}</small><Icon name="arrow" size={12} /></button>)}</div>
+            <div className="mode-block"><span className="kicker">AGENT POLICY / {liveState === "connected" ? "RUN LOCKED" : "SELECT BEFORE CONNECT"}</span><div className="mode-grid">{(["baseline", "backchannel", "jev_backchannel"] as Mode[]).map((item) => <button key={item} className={mode === item ? "mode-selected" : ""} disabled={liveState === "connecting" || liveState === "connected"} title={liveState === "connected" ? "Mode is fixed for the active run" : undefined} onClick={() => void changeMode(item)}>{item === "baseline" ? "BASE" : item === "backchannel" ? "TIMER" : "JEV"}</button>)}</div></div>
+          </aside>
+
           <section className="panel feed-panel" aria-labelledby="feed-heading">
             <div className="panel-head"><h2 id="feed-heading">05 / FAST EVENT FEED</h2><div className="feed-switch" role="tablist" aria-label="Event source"><button className={feedView === "live" ? "feed-switch-selected" : ""} onClick={() => setFeedView("live")} role="tab" aria-selected={feedView === "live"}>LIVE</button><button className={feedView === "replay" ? "feed-switch-selected" : ""} onClick={() => setFeedView("replay")} role="tab" aria-selected={feedView === "replay"}>REPLAY</button></div></div>
             <div className="feed-source">{feedLabel} {feedView === "live" && eventState === "ready" ? "· POLL 1.2S" : ""}</div>
@@ -832,9 +900,9 @@ export default function Workspace() {
           </section>
 
           <section className="panel timeline-panel" aria-labelledby="timeline-heading">
-            <div className="panel-head"><h2 id="timeline-heading">06 / RUN TRACE</h2><label>RUN <select value={selectedRunId || ""} onChange={(event) => setSelectedRunId(event.target.value || null)}><option value="">RECORDED SCENARIO</option>{liveRunId && <option value={liveRunId}>LIVE / {liveRunId.slice(-8)}</option>}{(selectedReport?.runs || []).map((run) => <option key={String(run.run_id)} value={String(run.run_id)}>{String(run.mode).toUpperCase()} / {String(run.run_id).slice(-8)}</option>)}</select></label></div>
+            <div className="panel-head"><h2 id="timeline-heading">06 / RUN TRACE</h2><label>RUN <select value={selectedRunId || ""} onChange={(event) => setSelectedRunId(event.target.value || null)}><option value="">RECORDED SCENARIO</option>{liveRunId && <option value={liveRunId}>LIVE / {liveRunId.slice(-8)}</option>}{selectableRuns.map((run) => <option key={run.run_id} value={run.run_id}>{run.mode.toUpperCase()} / {run.run_id.slice(-8)}</option>)}</select></label></div>
             <div className="trace-controls">
-              <label>COMPARE <select value={compareRunId || ""} onChange={(event) => setCompareRunId(event.target.value || null)}><option value="">OFF</option>{(selectedReport?.runs || []).filter((run) => run.run_id !== selectedRunId).map((run) => <option key={String(run.run_id)} value={String(run.run_id)}>{String(run.mode).toUpperCase()} / {String(run.run_id).slice(-8)}</option>)}</select></label>
+              <label>COMPARE <select value={compareRunId || ""} onChange={(event) => setCompareRunId(event.target.value || null)}><option value="">OFF</option>{selectableRuns.filter((run) => run.run_id !== selectedRunId).map((run) => <option key={run.run_id} value={run.run_id}>{run.mode.toUpperCase()} / {run.run_id.slice(-8)}</option>)}</select></label>
               <span className="trace-legend"><i className="legend-primary" /> PRIMARY <i className="legend-compare" /> COMPARE</span>
             </div>
             {timelineEvents.length === 0 ? <p className="empty-line">NO RUN TRACE. START A CONVERSATION OR RUN REPLAY.</p> : <><div className="trace-axis"><span>0MS</span><span>{Math.round(timelineMax)}MS</span></div><div className="trace-lanes">{LANES.map((lane) => <div className="trace-lane" key={lane}><span>{lane.toUpperCase()}</span><div className="trace-track">{primaryTrace[lane].map((mark) => <i key={mark.key} className={`trace-${mark.kind}`} style={{ left: `${mark.left}%`, width: mark.width === undefined ? undefined : `${mark.width}%` }} title={mark.title} />)}{compareTrace?.[lane].map((mark) => <i key={`compare-${mark.key}`} className={`trace-${mark.kind} trace-compare`} style={{ left: `${mark.left}%`, width: mark.width === undefined ? undefined : `${mark.width}%` }} title={`COMPARE / ${mark.title}`} />)}</div></div>)}</div></>}

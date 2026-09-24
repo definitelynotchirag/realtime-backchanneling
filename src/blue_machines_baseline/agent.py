@@ -496,6 +496,10 @@ def attach_instrumentation(
         transcript = getattr(event, "transcript", "") or ""
         record_if_open(
             "stt_transcript",
+            # The text itself, not just its size. The console's transcript panel reads
+            # this field, and counting words without keeping them made the panel render
+            # "not emitted by the worker event contract" for every session.
+            transcript=transcript,
             is_final=bool(getattr(event, "is_final", False)),
             character_count=len(transcript),
             word_count=len(transcript.split()),
@@ -584,7 +588,7 @@ def attach_backchanneling(
             "no cue audio for %s; those cues stay out of the timer policy's rotation",
             ", ".join(text for text in settings.backchannel_texts if text not in cached_clips),
         )
-    rotation = CueRotation(timer_cues or settings.backchannel_texts)
+    rotation = CueRotation(timer_cues or settings.backchannel_texts, random_start=True)
     selected_cue = (
         cue_state if cue_state is not None else {"text": rotation.current, "from_jev": False}
     )

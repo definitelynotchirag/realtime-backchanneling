@@ -20,6 +20,7 @@ import audioop
 import hashlib
 import logging
 import os
+import random
 import wave
 from array import array
 from collections.abc import Mapping, Sequence
@@ -213,15 +214,26 @@ class CueRotation:
     """Cycles a policy through the cues it is allowed to use.
 
     The timer policy has no classifier, so without this it repeats one sound for a whole
-    session; the order is the configured order, and with two or more cues no cue repeats
-    back to back by construction.
+    session; with two or more cues no cue repeats back to back by construction.
+
+    `random_start` begins at an arbitrary position. A session that always started at the
+    head of the list made the rotation look broken to anyone testing with a single turn:
+    the first cue was always the same sound, which is what a rotation exists to avoid.
+    Which cue plays carries no meaning, so starting anywhere costs nothing.
     """
 
-    def __init__(self, cues: Sequence[str]) -> None:
+    def __init__(
+        self, cues: Sequence[str], *, start: int | None = None, random_start: bool = False
+    ) -> None:
         if not cues:
             raise ValueError("a cue rotation needs at least one cue")
         self._cues = tuple(cues)
-        self._index = 0
+        if start is not None:
+            self._index = start % len(self._cues)
+        elif random_start:
+            self._index = random.randrange(len(self._cues))
+        else:
+            self._index = 0
 
     @property
     def cues(self) -> tuple[str, ...]:

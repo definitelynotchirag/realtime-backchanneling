@@ -26,7 +26,15 @@ class FakeBackchannel:
     active = True
 
 
-def test_instrumentation_records_speech_and_response_boundaries_without_transcript_text() -> None:
+def test_instrumentation_records_speech_boundaries_and_the_transcript_text() -> None:
+    """The transcript text is recorded, reversing an earlier deliberate omission.
+
+    The event carried only counts so that user speech never reached the log, and the
+    console's transcript panel has been empty ever since - it asks for a field the worker
+    never sent. The panel is the reason the text is kept now. Worth knowing before this
+    runs on a real conversation: the live log is gitignored, and the committed evidence
+    holds scripted lines only.
+    """
     session = FakeSession()
     recorder = EventRecorder()
     attach_instrumentation(session, recorder)
@@ -35,7 +43,7 @@ def test_instrumentation_records_speech_and_response_boundaries_without_transcri
         SimpleNamespace(old_state="listening", new_state="speaking")
     )
     session.callbacks["user_input_transcribed"](
-        SimpleNamespace(transcript="a private sentence", is_final=True)
+        SimpleNamespace(transcript="a short sentence", is_final=True)
     )
     session.callbacks["user_state_changed"](
         SimpleNamespace(old_state="speaking", new_state="listening")
@@ -56,11 +64,11 @@ def test_instrumentation_records_speech_and_response_boundaries_without_transcri
         "agent_response_ended",
     ]
     assert recorder.events[1].data == {
+        "transcript": "a short sentence",
         "is_final": True,
-        "character_count": len("a private sentence"),
+        "character_count": len("a short sentence"),
         "word_count": 3,
     }
-    assert "private sentence" not in str(recorder.events[1].as_dict())
 
 
 def test_instrumentation_ignores_late_metrics_after_recorder_close() -> None:
